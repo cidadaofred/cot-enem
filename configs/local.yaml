@@ -1,0 +1,6 @@
+runtime:
+  environment: auto
+  device: auto
+storage:
+  backend: local
+  base_path: outputs

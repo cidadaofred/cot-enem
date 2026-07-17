@@ -82,3 +82,59 @@ programaticamente, e o `SpecifyAgent` melhora as etapas sem alterar questão ou
 alternativas. Juízes independentes avaliam evolução e correção. Aceitos e rejeitados
 são escritos progressivamente; IDs determinísticos permitem retomar a execução sem
 duplicatas. Nesta fase, a CLI aceita apenas `specify`.
+
+## Execução portátil
+
+A configuração segue a precedência:
+
+```text
+configs/default.yaml
+        ↓
+perfil local/colab/server/cpu/gpu
+        ↓
+variáveis COTENEM_* e LLM_*
+        ↓
+argumentos da CLI
+```
+
+Inspecione o ambiente e valide pré-requisitos:
+
+```bash
+python -m cot_enem.cli info --config configs/local.yaml
+python -m cot_enem.cli verify --config configs/local.yaml
+```
+
+Seleção explícita:
+
+```bash
+python -m cot_enem.cli info --config configs/cpu.yaml --device cpu
+python -m cot_enem.cli info --config configs/gpu.yaml --device cuda --precision auto
+```
+
+`device=auto` escolhe CUDA, depois MPS e por fim CPU. `precision=auto` usa BF16
+somente quando a GPU declara suporte; caso contrário usa FP16 em aceleradores e FP32
+em CPU. O projeto suporta Python 3.11 e 3.12; Python 3.14 é rejeitado por `verify`
+para evitar incompatibilidades com bibliotecas científicas.
+
+### Qual arquivo faz o quê?
+
+- `configs/default.yaml`: configuração integral e reproduzível.
+- `configs/local.yaml`, `colab.yaml`, `server.yaml`: sobrescritas por ambiente.
+- `configs/cpu.yaml`, `gpu.yaml`: sobrescritas de dispositivo e precisão.
+- `configuration/schemas.py`: contrato Pydantic da configuração.
+- `configuration/loader.py`: merge hierárquico e mensagens de erro com origem.
+- `runtime/environment.py`: detecção Windows, Linux, WSL, Colab, SLURM, RAM e GPU.
+- `runtime/device.py`: escolha validada de CPU, CUDA, MPS e precisão.
+- `runtime/context.py`: reúne configuração, ambiente, dispositivo e saída.
+- `runtime/diagnostics.py`: implementa as verificações de `verify` e dados de `info`.
+- `observability/logging_config.py`: logs no console e JSONL, sem ler segredos.
+
+O código de domínio continua independente:
+
+```text
+CLI → configuração → ExecutionContext
+                         ↓
+                  pipeline/agentes
+                         ↓
+             Local | Colab | servidor
+```

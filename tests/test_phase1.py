@@ -36,3 +36,27 @@ def test_repository_is_resumable(tmp_path):
     assert repository.prepare(FIXTURE, output) == 2
     assert repository.prepare(FIXTURE, output) == 0
     assert len(list(read_jsonl(output))) == 2
+
+
+def test_repository_records_invalid_item_and_continues(tmp_path):
+    source = tmp_path / "enem-2017.xml"
+    source.write_text(
+        """<exam>
+        <question id="1"><statement>Incompleta</statement>
+          <option id="A"></option><option id="B"></option><option id="C"></option>
+          <option id="D"></option><option id="E" correct="Yes"></option>
+        </question>
+        <question id="2"><statement>Completa</statement>
+          <option id="A" correct="Yes">A</option><option id="B">B</option>
+          <option id="C">C</option><option id="D">D</option><option id="E">E</option>
+        </question></exam>""",
+        encoding="utf-8",
+    )
+    output = tmp_path / "normalized.jsonl"
+    repository = QuestionRepository()
+    assert repository.prepare(source, output) == 1
+    assert repository.last_rejected_count == 1
+    assert list(read_jsonl(output))[0]["id"] == "enem_2017_002"
+    rejected = list(read_jsonl(tmp_path / "normalized.rejected.jsonl"))
+    assert rejected[0]["source_id"] == "1"
+    assert rejected[0]["status"] == "rejected"

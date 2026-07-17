@@ -7,11 +7,11 @@ name = "cot-enem"
 version = "0.1.0"
 description = "Pipeline reproduzível para construção do dataset CoT-ENEM."
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.11,<3.14"
 dependencies = ["pydantic>=2.7,<3", "PyYAML>=6,<7"]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<9", "pytest-cov>=5,<6", "ruff>=0.5,<1"]
+dev = ["pytest>=8,<9", "pytest-cov>=5,<6", "ruff>=0.5,<1", "mypy>=1.11,<2"]
 huggingface = ["transformers>=4.44,<5", "torch>=2.3,<3"]
 
 [project.scripts]

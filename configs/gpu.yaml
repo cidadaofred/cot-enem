@@ -1,0 +1,6 @@
+runtime:
+  device: cuda
+  precision: auto
+  num_workers: 4
+model:
+  batch_size: 1

@@ -1,0 +1,12 @@
+runtime:
+  environment: colab
+  device: auto
+  precision: auto
+storage:
+  # Após montar o Drive, ele é acessível como um filesystem local.
+  backend: local
+  base_path: outputs
+  persistent_path: /content/drive/MyDrive/cot-enem/outputs
+  cache_path: /content/drive/MyDrive/cot-enem/cache
+pipeline:
+  checkpoint_interval: 10

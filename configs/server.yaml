@@ -1,0 +1,10 @@
+runtime:
+  environment: server
+  device: auto
+  precision: auto
+  num_workers: 4
+storage:
+  backend: local
+  base_path: outputs
+pipeline:
+  checkpoint_interval: 25

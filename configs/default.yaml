@@ -1,0 +1,32 @@
+project:
+  name: cot-enem
+  seed: 42
+runtime:
+  environment: auto
+  device: auto
+  precision: auto
+  num_workers: 2
+model:
+  provider: openai_compatible
+  name: qwen2.5:1.5b
+  judge_name: qwen2.5:1.5b
+  batch_size: 1
+  max_new_tokens: 512
+  temperature: 0.2
+  timeout_seconds: 120
+  max_attempts: 3
+pipeline:
+  stages: [specify]
+  checkpoint_interval: 25
+  resume: true
+  fail_fast: false
+  limit: null
+storage:
+  backend: local
+  base_path: outputs
+  persistent_path: null
+  cache_path: null
+logging:
+  level: INFO
+  save_to_file: true
+  structured: true

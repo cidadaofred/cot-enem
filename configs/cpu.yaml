@@ -1,0 +1,6 @@
+runtime:
+  device: cpu
+  precision: fp32
+  num_workers: 2
+model:
+  batch_size: 1
