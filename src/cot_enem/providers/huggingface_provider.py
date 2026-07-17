@@ -4,7 +4,7 @@ import json
 from typing import Any
 
 from cot_enem.providers.base import LLMProvider, LLMResponse, Message
-from cot_enem.providers.errors import ProviderConfigurationError
+from cot_enem.providers.errors import ProviderConfigurationError, StructuredResponseError
 from cot_enem.providers.structured import parse_json_object, require_schema_keys
 
 
@@ -20,12 +20,14 @@ class HuggingFaceProvider(LLMProvider):
         precision: str = "auto",
         quantization: str = "none",
         max_new_tokens: int = 1024,
+        max_format_attempts: int = 3,
     ) -> None:
         self.model = model
         self.device = device
         self.precision = precision
         self.quantization = quantization
         self.max_new_tokens = max_new_tokens
+        self.max_format_attempts = max_format_attempts
         self._pipeline = pipeline_instance
 
     def _get_pipeline(self) -> Any:
@@ -93,26 +95,48 @@ class HuggingFaceProvider(LLMProvider):
             )
             conversation[-1]["content"] += schema_instruction
         generation_pipeline = self._get_pipeline()
-        tokenizer = getattr(generation_pipeline, "tokenizer", None)
-        if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
-            prompt = tokenizer.apply_chat_template(
-                conversation,
-                tokenize=False,
-                add_generation_prompt=True,
-            )
-        else:
-            prompt = "\n".join(
-                f"{message['role']}: {message['content']}" for message in conversation
-            )
-        output = generation_pipeline(
-            prompt,
-            max_new_tokens=self.max_new_tokens,
-            do_sample=temperature > 0,
-            temperature=max(temperature, 1e-5),
-            return_full_text=False,
-        )
-        content = output[0]["generated_text"]
-        parsed = parse_json_object(content) if response_schema is not None else None
-        if parsed is not None:
-            require_schema_keys(parsed, response_schema)
-        return LLMResponse(content=content, parsed=parsed, model=self.model)
+        last_error: StructuredResponseError | None = None
+        for attempt in range(1, self.max_format_attempts + 1):
+            tokenizer = getattr(generation_pipeline, "tokenizer", None)
+            if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
+                prompt = tokenizer.apply_chat_template(
+                    conversation,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+            else:
+                prompt = "\n".join(
+                    f"{message['role']}: {message['content']}" for message in conversation
+                )
+            generation_kwargs: dict[str, Any] = {
+                "max_new_tokens": self.max_new_tokens,
+                "do_sample": temperature > 0,
+                "return_full_text": False,
+            }
+            if temperature > 0:
+                generation_kwargs["temperature"] = temperature
+            output = generation_pipeline(prompt, **generation_kwargs)
+            content = output[0]["generated_text"]
+            try:
+                parsed = parse_json_object(content) if response_schema is not None else None
+                if parsed is not None:
+                    require_schema_keys(parsed, response_schema)
+                return LLMResponse(content=content, parsed=parsed, model=self.model)
+            except StructuredResponseError as exc:
+                last_error = exc
+                if attempt == self.max_format_attempts:
+                    break
+                conversation.extend(
+                    [
+                        {"role": "assistant", "content": content},
+                        {
+                            "role": "user",
+                            "content": (
+                                "A resposta anterior não é JSON válido. Corrija-a e responda "
+                                "somente com o objeto JSON. Escape barras invertidas dentro de "
+                                "strings como \\\\ e não use blocos Markdown."
+                            ),
+                        },
+                    ]
+                )
+        raise last_error or StructuredResponseError("model did not return structured JSON")

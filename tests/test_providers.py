@@ -53,6 +53,12 @@ def test_structured_parser_extracts_object_from_short_model_prose():
     assert parse_json_object(content)["final_answer"] == "E"
 
 
+def test_structured_parser_repairs_latex_backslashes_inside_json_strings():
+    content = r'{"reasoning_steps": ["Use \( V = NBAf \)"], "final_answer": "A"}'
+    parsed = parse_json_object(content)
+    assert parsed["reasoning_steps"] == [r"Use \( V = NBAf \)"]
+
+
 def test_retry_uses_exponential_backoff():
     attempts, delays = [], []
 
