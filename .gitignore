@@ -1,0 +1,17 @@
+.env
+.idea/
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+data/raw/*
+data/interim/*
+data/processed/*
+outputs/logs/*
+outputs/checkpoints/*
+outputs/datasets/*
+!**/.gitkeep
+

@@ -1,0 +1,14 @@
+experiment:
+  name: cot-enem-pilot
+  seed: 42
+  max_samples: 20
+  eligible_only: true
+generation:
+  strategies: [specify, complicate, diversify]
+  temperature: 0.2
+  max_retries: 3
+validation:
+  require_answer_match: true
+  require_correctness_judge: true
+  require_enem_style: true
+

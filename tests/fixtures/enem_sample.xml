@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<exam>
+  <question id="42" year="2015" area="Ciências da Natureza" image="false" EK="true" TC="true" IC="false" DS="true">
+    <header>Um veículo desloca-se em linha reta.</header>
+    <statement>Qual é a velocidade média ao percorrer 100 m em 5 s?</statement>
+    <answer id="A">5 m/s</answer><answer id="B">10 m/s</answer>
+    <answer id="C" correct="true">20 m/s</answer><answer id="D">25 m/s</answer><answer id="E">50 m/s</answer>
+  </question>
+  <question id="43" year="2015" image="true" IC="true">
+    <header>Observe a figura.</header><statement>Qual opção representa o gráfico?</statement>
+    <answer id="A" correct="true">I</answer><answer id="B">II</answer><answer id="C">III</answer><answer id="D">IV</answer><answer id="E">V</answer>
+  </question>
+</exam>

@@ -1,0 +1,3 @@
+models:
+  generator: default-generator
+  judge: default-judge
