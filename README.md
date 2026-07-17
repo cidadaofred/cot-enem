@@ -16,8 +16,8 @@ XML bruto -> parser -> normalizador -> filtros -> JSONL normalizado
 mais difícil no mesmo domínio. `Diversify` cria uma questão estruturalmente diferente
 na mesma competência. As três estratégias partem da questão raiz.
 
-Esta entrega implementa a Fase 1: schemas, parser XML, normalização, filtros,
-persistência JSONL, amostras e testes.
+As Fases 1 e 2 estão implementadas: fundação do dataset e infraestrutura
+independente de provedor de LLM.
 
 ## Instalação e uso
 
@@ -37,5 +37,16 @@ JSONL com `eligible=false` para auditoria.
 
 Pydantic v2 estabiliza os contratos normalizado e evoluído; `src` layout separa lógica
 de scripts e notebooks; JSONL UTF-8 permite escrita progressiva. O XML histórico pode
-ter variações ainda não representadas pelos aliases atuais. Provedores, agentes,
+ter variações ainda não representadas pelos aliases atuais.
+
+## Provedores de LLM
+
+- `MockLLMProvider`: respostas determinísticas, sem rede, usado nos testes.
+- `OpenAICompatibleProvider`: usa `LLM_BASE_URL`, `LLM_API_KEY` e `LLM_MODEL`; não
+  depende de SDK proprietário.
+- `HuggingFaceProvider`: adaptador opcional com carregamento tardio para execução local
+  ou Colab. Instale com `pip install -e ".[huggingface]"`.
+
+Todos retornam `LLMResponse`, suportam JSON estruturado e preservam metadados de uso.
+Retries com backoff exponencial são aplicados a falhas do provedor remoto. Agentes,
 métricas semânticas e Colab serão adicionados nas fases seguintes.

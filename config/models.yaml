@@ -1,3 +1,15 @@
 models:
   generator: default-generator
   judge: default-judge
+providers:
+  default:
+    type: openai_compatible
+    env:
+      api_key: LLM_API_KEY
+      base_url: LLM_BASE_URL
+      model: LLM_MODEL
+    timeout_seconds: 60
+    max_attempts: 3
+  local:
+    type: huggingface
+    model: null
