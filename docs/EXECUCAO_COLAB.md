@@ -38,12 +38,13 @@ processamento será refeito.
 - Hugging Face Transformers, sem servidor HTTP intermediário;
 - quantização NF4 em 4 bits;
 - uma única cópia do modelo compartilhada entre geração e juízes;
-- CUDA com BF16 quando suportado e FP16 como fallback;
+- CUDA com FP16, compatível com a Tesla T4;
 - escrita incremental no Google Drive.
 
-O cache do modelo fica em `Meu Drive/cot-enem/cache/huggingface`. A primeira sessão
-faz o download; as seguintes reutilizam os arquivos. Não mova o repositório inteiro
-para o Drive: muitos arquivos pequenos tornam instalação e imports mais lentos.
+O cache do modelo fica temporariamente em `/content/hf-cache`. A primeira execução
+de cada nova sessão faz o download novamente. Isso evita consumir o espaço limitado
+do Drive com os pesos originais do modelo. Somente o JSONL de entrada, os logs e os
+resultados incrementais ficam persistidos no Drive.
 
 ## Diagnóstico
 

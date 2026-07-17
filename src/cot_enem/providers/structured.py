@@ -10,15 +10,30 @@ _FENCE = re.compile(r"^\s*```(?:json)?\s*(.*?)\s*```\s*$", re.DOTALL | re.IGNORE
 
 
 def parse_json_object(content: str) -> dict[str, Any]:
-    """Parse a JSON object, accepting a single optional Markdown code fence."""
+    """Parse a JSON object, accepting fences or short surrounding model prose."""
 
     candidate = _FENCE.sub(r"\1", content).strip()
     try:
         value = json.loads(candidate)
     except json.JSONDecodeError as exc:
-        raise StructuredResponseError(
-            f"model response is not valid JSON (line {exc.lineno}, column {exc.colno})"
-        ) from exc
+        decoder = json.JSONDecoder()
+        value = None
+        for start, character in enumerate(candidate):
+            if character != "{":
+                continue
+            try:
+                decoded, _end = decoder.raw_decode(candidate, start)
+            except json.JSONDecodeError:
+                continue
+            if isinstance(decoded, dict):
+                value = decoded
+                break
+        if value is None:
+            preview = candidate[:160].replace("\n", " ")
+            raise StructuredResponseError(
+                "model response is not valid JSON "
+                f"(line {exc.lineno}, column {exc.colno}; preview={preview!r})"
+            ) from exc
     if not isinstance(value, dict):
         raise StructuredResponseError("structured model response must be a JSON object")
     return value

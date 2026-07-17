@@ -54,7 +54,7 @@ class HuggingFaceProvider(LLMProvider):
             dtype = dtype_by_name.get(self.precision)
             model_kwargs: dict[str, Any] = {}
             if dtype is not None:
-                model_kwargs["torch_dtype"] = dtype
+                model_kwargs["dtype"] = dtype
             if self.device == "cuda":
                 model_kwargs["device_map"] = "auto"
             if self.quantization == "4bit":
@@ -84,11 +84,27 @@ class HuggingFaceProvider(LLMProvider):
         temperature: float = 0.0,
         response_schema: dict[str, Any] | None = None,
     ) -> LLMResponse:
-        prompt = "\n".join(f"{message['role']}: {message['content']}" for message in messages)
+        conversation = [dict(message) for message in messages]
         if response_schema:
-            prompt += "\nReturn only a JSON object matching this schema:\n"
-            prompt += json.dumps(response_schema, ensure_ascii=False)
-        output = self._get_pipeline()(
+            schema_instruction = (
+                "\nResponda somente com um objeto JSON válido, sem Markdown ou texto adicional, "
+                "seguindo este JSON Schema:\n"
+                + json.dumps(response_schema, ensure_ascii=False)
+            )
+            conversation[-1]["content"] += schema_instruction
+        generation_pipeline = self._get_pipeline()
+        tokenizer = getattr(generation_pipeline, "tokenizer", None)
+        if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
+            prompt = tokenizer.apply_chat_template(
+                conversation,
+                tokenize=False,
+                add_generation_prompt=True,
+            )
+        else:
+            prompt = "\n".join(
+                f"{message['role']}: {message['content']}" for message in conversation
+            )
+        output = generation_pipeline(
             prompt,
             max_new_tokens=self.max_new_tokens,
             do_sample=temperature > 0,

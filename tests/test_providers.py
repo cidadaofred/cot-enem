@@ -48,6 +48,11 @@ def test_structured_parser_accepts_json_fence():
     assert parse_json_object('```json\n{"final_answer": "A"}\n```')["final_answer"] == "A"
 
 
+def test_structured_parser_extracts_object_from_short_model_prose():
+    content = 'Aqui está o resultado:\n{"final_answer": "E"}\nEspero ter ajudado.'
+    assert parse_json_object(content)["final_answer"] == "E"
+
+
 def test_retry_uses_exponential_backoff():
     attempts, delays = [], []
 
