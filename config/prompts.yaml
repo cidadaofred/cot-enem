@@ -1,2 +1,47 @@
 version: 1
-prompts: {}
+prompts:
+  initial_cot:
+    version: initial_cot_v1
+    system: >-
+      Você resolve questões objetivas do ENEM. Produza somente JSON válido, com etapas
+      concisas e verificáveis. Não invente dados e não mencione gabarito oficial.
+    user: |-
+      Resolva a questão abaixo sem acesso ao gabarito.
+      {question}
+      Retorne reasoning_steps (lista não vazia) e final_answer (A, B, C, D ou E).
+  specify:
+    version: specify_v1
+    system: >-
+      Você é o agente Specify. Aprimore a cadeia de raciocínio sem alterar questão,
+      alternativas ou conclusão. Elimine saltos lógicos e conteúdo irrelevante.
+    user: |-
+      Questão:
+      {question}
+      CoT inicial:
+      {initial_cot}
+      Retorne somente reasoning_steps e final_answer em JSON.
+  evolution_success_judge:
+    version: evolution_success_v1
+    system: >-
+      Compare duas cadeias de raciocínio. Aprove apenas se a segunda for mais completa,
+      específica, coerente e sem conteúdo irrelevante.
+    user: |-
+      Questão:
+      {question}
+      Inicial:
+      {initial_cot}
+      Aprimorada:
+      {improved_cot}
+      Retorne approved (booleano) e reasons (lista de strings).
+  correctness_judge:
+    version: correctness_v1
+    system: >-
+      Avalie consistência lógica, cálculos, conclusão e correspondência da alternativa.
+      Retorne uma decisão conservadora em JSON.
+    user: |-
+      Questão:
+      {question}
+      Gabarito para validação: {gold_answer}
+      Raciocínio:
+      {reasoning}
+      Retorne approved (booleano) e reasons (lista de strings).

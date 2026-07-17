@@ -16,8 +16,8 @@ XML bruto -> parser -> normalizador -> filtros -> JSONL normalizado
 mais difícil no mesmo domínio. `Diversify` cria uma questão estruturalmente diferente
 na mesma competência. As três estratégias partem da questão raiz.
 
-As Fases 1 e 2 estão implementadas: fundação do dataset e infraestrutura
-independente de provedor de LLM.
+As Fases 1, 2 e 3 estão implementadas: fundação do dataset, infraestrutura
+independente de provedor e primeiro fluxo funcional de CoT inicial + Specify.
 
 ## Instalação e uso
 
@@ -50,3 +50,35 @@ ter variações ainda não representadas pelos aliases atuais.
 Todos retornam `LLMResponse`, suportam JSON estruturado e preservam metadados de uso.
 Retries com backoff exponencial são aplicados a falhas do provedor remoto. Agentes,
 métricas semânticas e Colab serão adicionados nas fases seguintes.
+
+## CoT inicial e Specify
+
+O projeto inclui um baseline local em `.env.example`:
+
+```text
+LLM_API_KEY=ollama
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=qwen2.5:7b
+JUDGE_MODEL=qwen2.5:7b
+```
+
+Copie-o para `.env` e disponibilize o modelo no Ollama. A CLI carrega `.env`
+automaticamente, mas variáveis definidas no sistema, IntelliJ, Colab ou CI têm
+precedência. Para um serviço remoto, substitua URL, modelos e chave no `.env` local;
+ele é ignorado pelo Git.
+
+Depois execute:
+
+```bash
+python -m cot_enem.cli evolve \
+  --strategies specify \
+  --input data/processed/enem_normalized.jsonl \
+  --output outputs/datasets/cot_enem_v1.jsonl \
+  --limit 10
+```
+
+O CoT inicial é gerado sem envio do gabarito. A resposta é comparada
+programaticamente, e o `SpecifyAgent` melhora as etapas sem alterar questão ou
+alternativas. Juízes independentes avaliam evolução e correção. Aceitos e rejeitados
+são escritos progressivamente; IDs determinísticos permitem retomar a execução sem
+duplicatas. Nesta fase, a CLI aceita apenas `specify`.

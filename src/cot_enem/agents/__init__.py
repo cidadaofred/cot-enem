@@ -1,1 +1,5 @@
-"""Evolution agents (Phases 3-5)."""
+"""Evolution agents."""
+
+from cot_enem.agents.specify import SpecifyAgent
+
+__all__ = ["SpecifyAgent"]
