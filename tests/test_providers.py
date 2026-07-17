@@ -116,3 +116,18 @@ def test_huggingface_provider_accepts_injected_pipeline():
     response = provider.generate(MESSAGES, response_schema=SCHEMA)
     assert response.parsed == {"final_answer": "D"}
     assert "user: Resolva." in calls[0][0]
+
+
+def test_huggingface_provider_keeps_remote_runtime_options_lazy():
+    provider = HuggingFaceProvider(
+        "Qwen/Qwen2.5-7B-Instruct",
+        pipeline_instance=lambda *_args, **_kwargs: [],
+        device="cuda",
+        precision="fp16",
+        quantization="4bit",
+        max_new_tokens=512,
+    )
+    assert provider.device == "cuda"
+    assert provider.precision == "fp16"
+    assert provider.quantization == "4bit"
+    assert provider.max_new_tokens == 512

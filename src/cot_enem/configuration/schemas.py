@@ -29,6 +29,7 @@ class ModelConfig(ConfigModel):
     provider: Literal["openai_compatible", "huggingface", "mock"] = "openai_compatible"
     name: str = "qwen2.5:1.5b"
     judge_name: str | None = None
+    quantization: Literal["none", "4bit", "8bit"] = "none"
     batch_size: int = Field(default=1, ge=1)
     max_new_tokens: int = Field(default=512, ge=1)
     temperature: float = Field(default=0.2, ge=0, le=2)

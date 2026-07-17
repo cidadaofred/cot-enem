@@ -17,22 +17,65 @@ class HuggingFaceProvider(LLMProvider):
         *,
         pipeline_instance: Any | None = None,
         device: str | int | None = None,
+        precision: str = "auto",
+        quantization: str = "none",
         max_new_tokens: int = 1024,
     ) -> None:
         self.model = model
         self.device = device
+        self.precision = precision
+        self.quantization = quantization
         self.max_new_tokens = max_new_tokens
         self._pipeline = pipeline_instance
 
     def _get_pipeline(self) -> Any:
         if self._pipeline is None:
             try:
-                from transformers import pipeline
+                import torch
+                from transformers import (
+                    AutoModelForCausalLM,
+                    AutoTokenizer,
+                    BitsAndBytesConfig,
+                    pipeline,
+                )
             except ImportError as exc:
                 raise ProviderConfigurationError(
                     "install the optional 'huggingface' dependencies to use this provider"
                 ) from exc
-            self._pipeline = pipeline("text-generation", model=self.model, device=self.device)
+            if self.quantization != "none" and self.device != "cuda":
+                raise ProviderConfigurationError(
+                    "4-bit/8-bit quantization requires a CUDA runtime in this project"
+                )
+            dtype_by_name = {
+                "fp32": torch.float32,
+                "fp16": torch.float16,
+                "bf16": torch.bfloat16,
+            }
+            dtype = dtype_by_name.get(self.precision)
+            model_kwargs: dict[str, Any] = {}
+            if dtype is not None:
+                model_kwargs["torch_dtype"] = dtype
+            if self.device == "cuda":
+                model_kwargs["device_map"] = "auto"
+            if self.quantization == "4bit":
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(
+                    load_in_4bit=True,
+                    bnb_4bit_quant_type="nf4",
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_compute_dtype=dtype or torch.float16,
+                )
+            elif self.quantization == "8bit":
+                model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
+            tokenizer = AutoTokenizer.from_pretrained(self.model)
+            model = AutoModelForCausalLM.from_pretrained(self.model, **model_kwargs)
+            pipeline_kwargs: dict[str, Any] = {
+                "task": "text-generation",
+                "model": model,
+                "tokenizer": tokenizer,
+            }
+            if self.device != "cuda":
+                pipeline_kwargs["device"] = self.device
+            self._pipeline = pipeline(**pipeline_kwargs)
         return self._pipeline
 
     def generate(

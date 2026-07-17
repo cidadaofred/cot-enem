@@ -10,6 +10,8 @@ from cot_enem.dataset.repository import QuestionRepository
 from cot_enem.generation.initial_cot import InitialCoTGenerator
 from cot_enem.observability import configure_logging
 from cot_enem.pipeline import SpecifyPipeline
+from cot_enem.providers.base import LLMProvider
+from cot_enem.providers.huggingface_provider import HuggingFaceProvider
 from cot_enem.providers.openai_compatible import OpenAICompatibleProvider
 from cot_enem.runtime.context import build_execution_context
 from cot_enem.runtime.diagnostics import environment_summary, verify_environment
@@ -68,6 +70,34 @@ def _load_context(args: argparse.Namespace):
     return context
 
 
+def _build_providers(context) -> tuple[LLMProvider, LLMProvider]:
+    """Build providers without loading the same Hugging Face model twice."""
+    config = context.loaded_config.config.model
+    if config.provider == "huggingface":
+        provider = HuggingFaceProvider(
+            model=config.name,
+            device=context.device.device,
+            precision=context.device.precision,
+            quantization=config.quantization,
+            max_new_tokens=config.max_new_tokens,
+        )
+        return provider, provider
+    if config.provider == "openai_compatible":
+        return (
+            OpenAICompatibleProvider(
+                model=config.name,
+                timeout=config.timeout_seconds,
+                max_attempts=config.max_attempts,
+            ),
+            OpenAICompatibleProvider(
+                model=config.judge_name or config.name,
+                timeout=config.timeout_seconds,
+                max_attempts=config.max_attempts,
+            ),
+        )
+    raise ValueError("provider='mock' is reserved for tests and cannot run from the CLI")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cot-enem")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -110,16 +140,7 @@ def main(argv: list[str] | None = None) -> int:
         context = _load_context(args)
         config = context.loaded_config.config
         prompts = PromptCatalog.from_yaml(_project_path(args.prompts))
-        generator_provider = OpenAICompatibleProvider(
-            model=config.model.name,
-            timeout=config.model.timeout_seconds,
-            max_attempts=config.model.max_attempts,
-        )
-        judge_provider = OpenAICompatibleProvider(
-            model=config.model.judge_name or config.model.name,
-            timeout=config.model.timeout_seconds,
-            max_attempts=config.model.max_attempts,
-        )
+        generator_provider, judge_provider = _build_providers(context)
         pipeline = SpecifyPipeline(
             InitialCoTGenerator(
                 generator_provider, prompts, temperature=config.model.temperature

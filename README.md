@@ -138,3 +138,11 @@ CLI → configuração → ExecutionContext
                          ↓
              Local | Colab | servidor
 ```
+
+## Fase 3 remotamente no Colab
+
+Para máquinas Windows com poucos recursos, use
+`notebooks/fase3_colab.ipynb`. Ele não depende do Colab CLI nem do Ollama:
+clona o repositório para `/content`, usa `Qwen/Qwen2.5-7B-Instruct`
+quantizado em 4 bits na GPU e persiste entrada, cache e resultados no Google
+Drive. Consulte o procedimento completo em `docs/EXECUCAO_COLAB.md`.

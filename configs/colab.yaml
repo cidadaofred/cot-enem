@@ -1,12 +1,20 @@
 runtime:
   environment: colab
-  device: auto
+  device: cuda
   precision: auto
+model:
+  provider: huggingface
+  name: Qwen/Qwen2.5-7B-Instruct
+  judge_name: Qwen/Qwen2.5-7B-Instruct
+  quantization: 4bit
+  batch_size: 1
+  max_new_tokens: 512
 storage:
-  # Após montar o Drive, ele é acessível como um filesystem local.
-  backend: local
-  base_path: outputs
+  # Results are written to Drive so an interrupted session can resume.
+  backend: drive
+  base_path: /content/drive/MyDrive/cot-enem/outputs
   persistent_path: /content/drive/MyDrive/cot-enem/outputs
   cache_path: /content/drive/MyDrive/cot-enem/cache
 pipeline:
-  checkpoint_interval: 10
+  checkpoint_interval: 1
+  resume: true

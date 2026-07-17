@@ -51,6 +51,16 @@ def verify_environment(context: ExecutionContext) -> list[VerificationCheck]:
                     "configured" if os.getenv(variable) else "missing",
                 )
             )
+    if config.model.provider == "huggingface":
+        packages = ["transformers", "torch", "accelerate"]
+        if config.model.quantization != "none":
+            packages.append("bitsandbytes")
+        for package in packages:
+            try:
+                version = importlib.metadata.version(package)
+                checks.append(VerificationCheck(f"dependency:{package}", True, version))
+            except importlib.metadata.PackageNotFoundError:
+                checks.append(VerificationCheck(f"dependency:{package}", False, "not installed"))
     checks.append(
         VerificationCheck(
             "device",
