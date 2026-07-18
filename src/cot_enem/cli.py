@@ -211,6 +211,11 @@ def main(argv: list[str] | None = None) -> int:
             )
         else:
             generator_provider = _build_huggingface_provider(context, config.model.name)
+            print(
+                f"phase=candidate_generation role=generator "
+                f"model={config.model.name}",
+                flush=True,
+            )
             generated = ensemble.generate_candidates(
                 args.input,
                 args.candidates,
@@ -219,7 +224,12 @@ def main(argv: list[str] | None = None) -> int:
             )
             generator_provider.unload()
         print(f"candidates_written={generated}")
-        for judge_model in config.model.judge_names:
+        for judge_index, judge_model in enumerate(config.model.judge_names, start=1):
+            print(
+                f"phase=judge_voting role=judge "
+                f"judge={judge_index}/3 model={judge_model}",
+                flush=True,
+            )
             judge_provider = _build_huggingface_provider(context, judge_model)
             votes = ensemble.collect_votes(args.candidates, args.votes, judge_provider)
             judge_provider.unload()
