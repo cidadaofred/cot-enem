@@ -1,5 +1,43 @@
 # CoT-ENEM
 
+## Resultado experimental atual
+
+O baseline concluído utiliza exclusivamente questões do **ENEM 2017**. Foram
+normalizadas 86 questões: 33 elegíveis para o pipeline textual e 53 inelegíveis por
+dependência de imagem. O Specify processou todas as 33 questões e produziu 20
+registros aceitos e 13 rejeitados, uma taxa de aceitação de 60,6% entre os itens
+elegíveis. Os rejeitados permanecem armazenados para auditoria.
+
+O protocolo, as versões, os resultados, o consumo observado, as estimativas e as
+limitações estão documentados em `docs/RELATORIO_FASE3_ENEM2017.md`.
+
+### Independência dos agentes
+
+Specify, Complicate e Diversify são ramos independentes de um CoT inicial comum:
+
+```text
+Questão-raiz
+    |
+    +--> CoT inicial congelado
+            |
+            +--> Specify
+            +--> Complicate
+            `--> Diversify
+```
+
+Os agentes não são encadeados entre si. Complicate não recebe a saída de Specify, e
+Diversify não recebe a saída de Complicate. Isso reduz propagação de erros e preserva
+uma condição inicial comparável. Até o momento, somente Specify foi implementado e
+executado; Complicate e Diversify ainda não possuem resultados experimentais.
+
+### Modelo e ambiente
+
+Geração do CoT inicial, Specify, Evolution Success Judge e Correctness Judge usaram
+`Qwen/Qwen2.5-7B-Instruct`. Uma única instância do modelo foi compartilhada entre
+esses papéis, com quantização NF4 em 4 bits e FP16 numa NVIDIA Tesla T4 do Google
+Colab. O parser e o normalizador são determinísticos e não utilizam LLM. A execução
+não consumiu API paga; tokens, energia e pico de VRAM ainda não foram instrumentados.
+
 Projeto acadêmico inspirado em ChainLM/CoTGenius para gerar um dataset de questões do
 ENEM com cadeias de raciocínio e genealogia rastreável.
 
