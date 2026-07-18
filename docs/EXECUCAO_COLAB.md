@@ -47,6 +47,11 @@ A execução fiel à filtragem do artigo usa `ensemble-specify`. Ela persiste ca
 dois votos por juiz (evolução e correção) e o resultado da maioria em arquivos
 separados. Os modelos são carregados e descarregados sequencialmente para caber na T4.
 
+O notebook funciona em dois modos. Se `cot_enem_v1.jsonl` existir, reutiliza os
+candidatos do baseline. Se não existir, gera os candidatos do zero com Qwen antes de
+executar os três juízes. Para uma execução nova, recomenda-se ao menos 45 GB livres
+em `/content` para armazenar os três caches.
+
 O cache do modelo fica temporariamente em `/content/hf-cache`. A primeira execução
 de cada nova sessão faz o download novamente. Isso evita consumir o espaço limitado
 do Drive com os pesos originais do modelo. Somente o JSONL de entrada, os logs e os

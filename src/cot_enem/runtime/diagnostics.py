@@ -53,8 +53,8 @@ def verify_environment(context: ExecutionContext) -> list[VerificationCheck]:
             checks.append(
                 VerificationCheck(
                     "model_cache_disk_space",
-                    cache_free >= 20,
-                    f"{cache_free:.1f} GB free; expected at least 20 GB",
+                    cache_free >= 45,
+                    f"{cache_free:.1f} GB free; expected at least 45 GB for three models",
                 )
             )
         except OSError as exc:
