@@ -142,3 +142,25 @@ def test_huggingface_provider_keeps_remote_runtime_options_lazy():
     assert provider.precision == "fp16"
     assert provider.quantization == "4bit"
     assert provider.max_new_tokens == 512
+
+
+@pytest.mark.parametrize(
+    ("raw", "approved", "reasons"),
+    [
+        ({"answer": "Yes", "reason": "Improved."}, True, ["Improved."]),
+        ({"verdict": "No", "explanation": "Incorrect."}, False, ["Incorrect."]),
+        ({"is_correct": True}, True, []),
+    ],
+)
+def test_huggingface_provider_normalizes_binary_judge_aliases(
+    raw, approved, reasons
+):
+    normalized = HuggingFaceProvider._normalize_judge_response(
+        raw,
+        {
+            "type": "object",
+            "required": ["approved", "reasons"],
+        },
+    )
+    assert normalized["approved"] is approved
+    assert normalized["reasons"] == reasons

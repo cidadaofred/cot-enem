@@ -156,6 +156,7 @@ class HuggingFaceProvider(LLMProvider):
             try:
                 parsed = parse_json_object(content) if response_schema is not None else None
                 if parsed is not None:
+                    parsed = self._normalize_judge_response(parsed, response_schema)
                     require_schema_keys(parsed, response_schema)
                 return LLMResponse(content=content, parsed=parsed, model=self.model)
             except StructuredResponseError as exc:
@@ -168,11 +169,66 @@ class HuggingFaceProvider(LLMProvider):
                         {
                             "role": "user",
                             "content": (
-                                "A resposta anterior não é JSON válido. Corrija-a e responda "
-                                "somente com o objeto JSON. Escape barras invertidas dentro de "
-                                "strings como \\\\ e não use blocos Markdown."
+                                f"A resposta anterior foi rejeitada: {exc}. Corrija-a e "
+                                "responda somente com o objeto JSON exigido pelo schema. "
+                                "Para julgamentos, use exatamente o formato "
+                                '{"approved": true, "reasons": ["justificativa"]}. '
+                                "Escape barras invertidas dentro de strings como \\\\ e não "
+                                "use blocos Markdown."
                             ),
                         },
                     ]
                 )
-        raise last_error or StructuredResponseError("model did not return structured JSON")
+        preview = content[:200].replace("\n", " ") if "content" in locals() else ""
+        raise StructuredResponseError(
+            f"{self.model} did not return the required structured JSON; "
+            f"last_error={last_error}; preview={preview!r}"
+        )
+
+    @staticmethod
+    def _normalize_judge_response(
+        value: dict[str, Any], schema: dict[str, Any]
+    ) -> dict[str, Any]:
+        """Map common binary-judge aliases to the canonical majority-vote contract."""
+
+        required = set(schema.get("required", []))
+        if required != {"approved", "reasons"}:
+            return value
+        normalized = dict(value)
+        if "approved" not in normalized:
+            decision_keys = (
+                "answer",
+                "verdict",
+                "decision",
+                "result",
+                "is_correct",
+                "correct",
+                "success",
+                "evolution_success",
+                "correctness_verified",
+            )
+            decision = next(
+                (normalized[key] for key in decision_keys if key in normalized),
+                None,
+            )
+            if isinstance(decision, bool):
+                normalized["approved"] = decision
+            elif isinstance(decision, str):
+                token = decision.strip().casefold().rstrip(".")
+                if token in {"yes", "sim", "true", "approved", "correct", "pass"}:
+                    normalized["approved"] = True
+                elif token in {"no", "não", "nao", "false", "rejected", "incorrect", "fail"}:
+                    normalized["approved"] = False
+        if "reasons" not in normalized and "approved" in normalized:
+            reason_keys = ("reason", "explanation", "justification", "rationale")
+            reason = next(
+                (normalized[key] for key in reason_keys if key in normalized),
+                None,
+            )
+            if isinstance(reason, list):
+                normalized["reasons"] = [str(item) for item in reason]
+            elif reason is None:
+                normalized["reasons"] = []
+            else:
+                normalized["reasons"] = [str(reason)]
+        return normalized
