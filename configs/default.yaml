@@ -10,6 +10,7 @@ model:
   provider: openai_compatible
   name: qwen2.5:1.5b
   judge_name: qwen2.5:1.5b
+  judge_names: []
   quantization: none
   batch_size: 1
   max_new_tokens: 512

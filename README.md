@@ -38,6 +38,15 @@ esses papéis, com quantização NF4 em 4 bits e FP16 numa NVIDIA Tesla T4 do Go
 Colab. O parser e o normalizador são determinísticos e não utilizam LLM. A execução
 não consumiu API paga; tokens, energia e pico de VRAM ainda não foram instrumentados.
 
+### Filtragem por maioria, fiel ao ChainLM
+
+O comando `ensemble-specify` implementa uma segunda versão da Fase 3 com três juízes
+heterogêneos: Qwen2.5-7B-Instruct, Mistral-7B-Instruct-v0.3 e
+Phi-3.5-mini-instruct. Cada modelo vota separadamente sobre sucesso evolutivo e
+correção; dois votos aprovam por maioria. Candidatos, votos e consolidação são
+persistidos em JSONL distintos. Na T4, os modelos são carregados sequencialmente e
+descarregados antes do próximo juiz.
+
 Projeto acadêmico inspirado em ChainLM/CoTGenius para gerar um dataset de questões do
 ENEM com cadeias de raciocínio e genealogia rastreável.
 

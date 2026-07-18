@@ -35,11 +35,17 @@ processamento será refeito.
 `configs/colab.yaml` seleciona:
 
 - `Qwen/Qwen2.5-7B-Instruct`;
+- três juízes heterogêneos: Qwen2.5-7B, Mistral-7B-Instruct-v0.3 e
+  Phi-3.5-mini-instruct;
 - Hugging Face Transformers, sem servidor HTTP intermediário;
 - quantização NF4 em 4 bits;
 - uma única cópia do modelo compartilhada entre geração e juízes;
 - CUDA com FP16, compatível com a Tesla T4;
 - escrita incremental no Google Drive.
+
+A execução fiel à filtragem do artigo usa `ensemble-specify`. Ela persiste candidatos,
+dois votos por juiz (evolução e correção) e o resultado da maioria em arquivos
+separados. Os modelos são carregados e descarregados sequencialmente para caber na T4.
 
 O cache do modelo fica temporariamente em `/content/hf-cache`. A primeira execução
 de cada nova sessão faz o download novamente. Isso evita consumir o espaço limitado

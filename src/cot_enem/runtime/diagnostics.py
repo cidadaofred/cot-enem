@@ -3,6 +3,7 @@
 from dataclasses import asdict, dataclass
 import importlib.metadata
 import os
+from pathlib import Path
 import sys
 import tempfile
 
@@ -41,7 +42,23 @@ def verify_environment(context: ExecutionContext) -> list[VerificationCheck]:
     except OSError as exc:
         checks.append(VerificationCheck("output_writable", False, str(exc)))
     free_disk = available_disk_gb(output)
-    checks.append(VerificationCheck("disk_space", free_disk >= 5, f"{free_disk:.1f} GB free"))
+    checks.append(
+        VerificationCheck("output_disk_space", free_disk >= 0.1, f"{free_disk:.1f} GB free")
+    )
+    if config.model.provider == "huggingface" and config.storage.cache_path:
+        cache = Path(config.storage.cache_path)
+        try:
+            cache.mkdir(parents=True, exist_ok=True)
+            cache_free = available_disk_gb(cache)
+            checks.append(
+                VerificationCheck(
+                    "model_cache_disk_space",
+                    cache_free >= 20,
+                    f"{cache_free:.1f} GB free; expected at least 20 GB",
+                )
+            )
+        except OSError as exc:
+            checks.append(VerificationCheck("model_cache_disk_space", False, str(exc)))
     if config.model.provider == "openai_compatible":
         for variable in ("LLM_BASE_URL", "LLM_MODEL"):
             checks.append(

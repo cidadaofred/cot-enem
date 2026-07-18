@@ -73,6 +73,13 @@ class GenerationMetadata(StrictModel):
     execution_id: str
     attempts: int = Field(default=1, ge=1)
 
+class JudgeVote(StrictModel):
+    judge_model: str
+    evolution_success: bool
+    correctness_verified: bool
+    evolution_reasons: list[str] = Field(default_factory=list)
+    correctness_reasons: list[str] = Field(default_factory=list)
+
 class ValidationResult(StrictModel):
     format_valid: bool = False
     answer_matches_gold: bool = False
@@ -81,6 +88,7 @@ class ValidationResult(StrictModel):
     enem_style_valid: bool = False
     accepted: bool = False
     rejection_reasons: list[str] = Field(default_factory=list)
+    judge_votes: list[JudgeVote] = Field(default_factory=list)
 
 class EvolvedRecord(StrictModel):
     id: str

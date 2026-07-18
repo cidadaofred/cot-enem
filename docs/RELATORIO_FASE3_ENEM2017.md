@@ -182,3 +182,20 @@ Tesla T4, com quantização NF4 em 4 bits e computação FP16. Geração, evolu�
 julgamento compartilharam uma única instância do modelo. A arquitetura mantém
 Specify, Complicate e Diversify independentes a partir de um CoT inicial comum, de
 modo a evitar propagação de erros e permitir comparação direta entre estratégias.
+
+## 12. Revisão metodológica: ensemble de juízes
+
+Após o baseline de juiz único, a Fase 3 foi ampliada para aproximar a filtragem do
+artigo ChainLM. Os 33 candidatos já gerados pelo Qwen são reutilizados sem nova
+amostragem. Cada candidato recebe votos independentes de:
+
+- `Qwen/Qwen2.5-7B-Instruct`;
+- `mistralai/Mistral-7B-Instruct-v0.3`;
+- `microsoft/Phi-3.5-mini-instruct`.
+
+Cada juiz avalia sucesso evolutivo e correção. A aprovação em cada dimensão exige dois
+dos três votos. Os modelos são carregados sequencialmente na T4 e os votos são
+persistidos antes da troca de modelo. Essa revisão permite comparar diretamente juiz
+único e maioria heterogênea sobre os mesmos candidatos. Os resultados do ensemble
+devem ser relatados separadamente após a nova execução; a taxa de 60,6% permanece
+identificada como resultado do baseline de juiz único.

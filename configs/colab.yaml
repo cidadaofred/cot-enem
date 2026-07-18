@@ -7,6 +7,10 @@ model:
   provider: huggingface
   name: Qwen/Qwen2.5-7B-Instruct
   judge_name: Qwen/Qwen2.5-7B-Instruct
+  judge_names:
+    - Qwen/Qwen2.5-7B-Instruct
+    - mistralai/Mistral-7B-Instruct-v0.3
+    - microsoft/Phi-3.5-mini-instruct
   quantization: 4bit
   batch_size: 1
   max_new_tokens: 512

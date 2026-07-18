@@ -30,6 +30,20 @@ class HuggingFaceProvider(LLMProvider):
         self.max_format_attempts = max_format_attempts
         self._pipeline = pipeline_instance
 
+    def unload(self) -> None:
+        """Release model references before loading the next sequential Colab judge."""
+
+        self._pipeline = None
+        try:
+            import gc
+            import torch
+
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:
+            return
+
     def _get_pipeline(self) -> Any:
         if self._pipeline is None:
             try:
@@ -99,11 +113,33 @@ class HuggingFaceProvider(LLMProvider):
         for attempt in range(1, self.max_format_attempts + 1):
             tokenizer = getattr(generation_pipeline, "tokenizer", None)
             if tokenizer is not None and hasattr(tokenizer, "apply_chat_template"):
-                prompt = tokenizer.apply_chat_template(
-                    conversation,
-                    tokenize=False,
-                    add_generation_prompt=True,
-                )
+                try:
+                    prompt = tokenizer.apply_chat_template(
+                        conversation,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
+                except Exception as exc:
+                    if len(conversation) < 2 or conversation[0]["role"] != "system":
+                        raise ProviderConfigurationError(
+                            f"model chat template rejected the conversation: {self.model}"
+                        ) from exc
+                    compatible_conversation = [
+                        {
+                            "role": "user",
+                            "content": (
+                                conversation[0]["content"]
+                                + "\n\n"
+                                + conversation[1]["content"]
+                            ),
+                        },
+                        *conversation[2:],
+                    ]
+                    prompt = tokenizer.apply_chat_template(
+                        compatible_conversation,
+                        tokenize=False,
+                        add_generation_prompt=True,
+                    )
             else:
                 prompt = "\n".join(
                     f"{message['role']}: {message['content']}" for message in conversation

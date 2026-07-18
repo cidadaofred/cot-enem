@@ -7,6 +7,7 @@ from cot_enem.agents.specify import SpecifyAgent
 from cot_enem.config import PromptCatalog, load_env_file
 from cot_enem.configuration import load_application_config
 from cot_enem.dataset.repository import QuestionRepository
+from cot_enem.ensemble_pipeline import SpecifyEnsemblePipeline
 from cot_enem.generation.initial_cot import InitialCoTGenerator
 from cot_enem.observability import configure_logging
 from cot_enem.pipeline import SpecifyPipeline
@@ -98,6 +99,17 @@ def _build_providers(context) -> tuple[LLMProvider, LLMProvider]:
     raise ValueError("provider='mock' is reserved for tests and cannot run from the CLI")
 
 
+def _build_huggingface_provider(context, model: str) -> HuggingFaceProvider:
+    config = context.loaded_config.config.model
+    return HuggingFaceProvider(
+        model=model,
+        device=context.device.device,
+        precision=context.device.precision,
+        quantization=config.quantization,
+        max_new_tokens=config.max_new_tokens,
+    )
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="cot-enem")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -116,6 +128,21 @@ def build_parser() -> argparse.ArgumentParser:
     evolve.add_argument("--limit", type=int)
     evolve.add_argument("--prompts", default="config/prompts.yaml")
     _add_runtime_arguments(evolve)
+    ensemble = commands.add_parser(
+        "ensemble-specify",
+        help="Generate Specify candidates and apply three sequential majority judges",
+    )
+    ensemble.add_argument("--input", required=True)
+    ensemble.add_argument("--candidates", required=True)
+    ensemble.add_argument("--votes", required=True)
+    ensemble.add_argument("--output", required=True)
+    ensemble.add_argument(
+        "--existing-results",
+        help="Import prior Specify records instead of regenerating Qwen candidates",
+    )
+    ensemble.add_argument("--limit", type=int)
+    ensemble.add_argument("--prompts", default="config/prompts.yaml")
+    _add_runtime_arguments(ensemble)
     return parser
 
 
@@ -162,6 +189,48 @@ def main(argv: list[str] | None = None) -> int:
             f"device={context.device.device} precision={context.device.precision}"
         )
         print(f"records_written={count} execution_id={pipeline.execution_id}")
+    elif args.command == "ensemble-specify":
+        context = _load_context(args)
+        config = context.loaded_config.config
+        if config.model.provider != "huggingface":
+            raise ValueError("ensemble-specify currently requires provider='huggingface'")
+        if len(config.model.judge_names) != 3 or len(set(config.model.judge_names)) != 3:
+            raise ValueError(
+                "model.judge_names must contain exactly three distinct Hugging Face models"
+            )
+        prompts = PromptCatalog.from_yaml(_project_path(args.prompts))
+        ensemble = SpecifyEnsemblePipeline(
+            prompts, temperature=config.model.temperature
+        )
+        if args.existing_results:
+            generated = ensemble.import_candidates(
+                args.input,
+                args.existing_results,
+                args.candidates,
+                limit=args.limit if args.limit is not None else config.pipeline.limit,
+            )
+        else:
+            generator_provider = _build_huggingface_provider(context, config.model.name)
+            generated = ensemble.generate_candidates(
+                args.input,
+                args.candidates,
+                generator_provider,
+                limit=args.limit if args.limit is not None else config.pipeline.limit,
+            )
+            generator_provider.unload()
+        print(f"candidates_written={generated}")
+        for judge_model in config.model.judge_names:
+            judge_provider = _build_huggingface_provider(context, judge_model)
+            votes = ensemble.collect_votes(args.candidates, args.votes, judge_provider)
+            judge_provider.unload()
+            print(f"judge_model={judge_model} votes_written={votes}")
+        aggregated = ensemble.aggregate(
+            args.candidates,
+            args.votes,
+            args.output,
+            config.model.judge_names,
+        )
+        print(f"records_written={aggregated} voting=majority judges=3")
     return 0
 
 
