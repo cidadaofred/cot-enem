@@ -148,6 +148,35 @@ def test_huggingface_provider_keeps_remote_runtime_options_lazy():
     assert provider.max_new_tokens == 512
 
 
+def test_huggingface_provider_retries_schema_placeholder_without_a_vote():
+    calls = []
+
+    def pipeline(prompt, **kwargs):
+        calls.append((prompt, kwargs))
+        return [
+            {
+                "generated_text": (
+                    '{"approved":{"type":"boolean"},'
+                    '"reasons":[{"type":"string"}]}'
+                )
+            }
+        ]
+
+    provider = HuggingFaceProvider(
+        "local-model",
+        pipeline_instance=pipeline,
+        max_format_attempts=2,
+    )
+    with pytest.raises(StructuredResponseError, match="no concrete boolean vote"):
+        provider.generate(
+            MESSAGES,
+            response_schema={
+                "required": ["approved", "reasons"],
+            },
+        )
+    assert len(calls) == 2
+
+
 def test_checkpoint_progress_keeps_updates_and_deduplicates_only_final_render():
     output = StringIO()
     progress = _CheckpointProgressStream(output)

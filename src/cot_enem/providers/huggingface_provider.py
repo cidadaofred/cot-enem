@@ -191,6 +191,7 @@ class HuggingFaceProvider(LLMProvider):
                 if parsed is not None:
                     parsed = self._normalize_judge_response(parsed, response_schema)
                     require_schema_keys(parsed, response_schema)
+                    self._require_normalized_judge_types(parsed, response_schema)
                 return LLMResponse(content=content, parsed=parsed, model=self.model)
             except StructuredResponseError as exc:
                 last_error = exc
@@ -286,6 +287,26 @@ class HuggingFaceProvider(LLMProvider):
             else:
                 normalized["reasons"] = [str(reason)]
         return normalized
+
+    @staticmethod
+    def _require_normalized_judge_types(
+        value: dict[str, Any], schema: dict[str, Any]
+    ) -> None:
+        """Reject schema-shaped placeholders so the model gets a format retry."""
+
+        if set(schema.get("required", [])) != {"approved", "reasons"}:
+            return
+        if not isinstance(value.get("approved"), bool):
+            raise StructuredResponseError(
+                "structured judge response has no concrete boolean vote"
+            )
+        reasons = value.get("reasons")
+        if not isinstance(reasons, list) or not all(
+            isinstance(reason, str) for reason in reasons
+        ):
+            raise StructuredResponseError(
+                "structured judge response has no concrete string reasons"
+            )
 
     @staticmethod
     def _unwrap_typed_json_value(value: Any) -> Any:
