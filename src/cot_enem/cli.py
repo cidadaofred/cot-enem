@@ -7,9 +7,11 @@ from cot_enem.agents.specify import SpecifyAgent
 from cot_enem.config import PromptCatalog, load_env_file
 from cot_enem.configuration import load_application_config
 from cot_enem.dataset.repository import QuestionRepository
+from cot_enem.dataset.schema import Strategy
 from cot_enem.ensemble_pipeline import SpecifyEnsemblePipeline
 from cot_enem.generation.initial_cot import InitialCoTGenerator
 from cot_enem.observability import configure_logging
+from cot_enem.phase4_pipeline import QuestionEvolutionEnsemblePipeline
 from cot_enem.pipeline import SpecifyPipeline
 from cot_enem.providers.base import LLMProvider
 from cot_enem.providers.huggingface_provider import HuggingFaceProvider
@@ -143,6 +145,31 @@ def build_parser() -> argparse.ArgumentParser:
     ensemble.add_argument("--limit", type=int)
     ensemble.add_argument("--prompts", default="config/prompts.yaml")
     _add_runtime_arguments(ensemble)
+    phase4 = commands.add_parser(
+        "ensemble-evolve",
+        help="Run an independent Complicate or Diversify majority-voted branch",
+    )
+    phase4.add_argument(
+        "--strategy",
+        choices=["complicate", "diversify"],
+        required=True,
+    )
+    phase4.add_argument("--seeds", required=True)
+    phase4_source = phase4.add_mutually_exclusive_group(required=True)
+    phase4_source.add_argument(
+        "--initial-candidates",
+        help="Extract frozen initial CoTs from Phase 3 candidates",
+    )
+    phase4_source.add_argument(
+        "--parent-results",
+        help="Use accepted prior-generation results for iterative evolution",
+    )
+    phase4.add_argument("--candidates", required=True)
+    phase4.add_argument("--votes", required=True)
+    phase4.add_argument("--output", required=True)
+    phase4.add_argument("--limit", type=int)
+    phase4.add_argument("--prompts", default="config/prompts.yaml")
+    _add_runtime_arguments(phase4)
     return parser
 
 
@@ -250,6 +277,80 @@ def main(argv: list[str] | None = None) -> int:
             limit=effective_limit,
         )
         print(f"records_written={aggregated} voting=majority judges=3")
+    elif args.command == "ensemble-evolve":
+        context = _load_context(args)
+        config = context.loaded_config.config
+        if config.model.provider != "huggingface":
+            raise ValueError("ensemble-evolve currently requires provider='huggingface'")
+        if len(config.model.judge_names) != 3 or len(set(config.model.judge_names)) != 3:
+            raise ValueError(
+                "model.judge_names must contain exactly three distinct Hugging Face models"
+            )
+        strategy = Strategy(args.strategy)
+        prompts = PromptCatalog.from_yaml(_project_path(args.prompts))
+        pipeline = QuestionEvolutionEnsemblePipeline(
+            prompts,
+            strategy,
+            temperature=config.model.temperature,
+        )
+        effective_limit = (
+            args.limit if args.limit is not None else config.pipeline.limit
+        )
+        if args.initial_candidates:
+            seeds = pipeline.import_phase3_seeds(
+                args.initial_candidates,
+                args.seeds,
+                limit=effective_limit,
+            )
+            seed_source = "phase3_initial_cot"
+        else:
+            seeds = pipeline.import_accepted_results(
+                args.parent_results,
+                args.seeds,
+                limit=effective_limit,
+            )
+            seed_source = "accepted_parent_results"
+        print(f"seeds_written={seeds} source={seed_source}")
+        generator_provider = _build_huggingface_provider(context, config.model.name)
+        print(
+            f"phase=candidate_generation strategy={strategy.value} "
+            f"model={config.model.name}",
+            flush=True,
+        )
+        generated = pipeline.generate_candidates(
+            args.seeds,
+            args.candidates,
+            generator_provider,
+            limit=effective_limit,
+        )
+        generator_provider.unload()
+        print(f"candidates_written={generated}")
+        for judge_index, judge_model in enumerate(config.model.judge_names, start=1):
+            print(
+                f"phase=judge_voting strategy={strategy.value} "
+                f"judge={judge_index}/3 model={judge_model}",
+                flush=True,
+            )
+            judge_provider = _build_huggingface_provider(context, judge_model)
+            votes = pipeline.collect_votes(
+                args.candidates,
+                args.votes,
+                judge_provider,
+                limit=effective_limit,
+            )
+            judge_provider.unload()
+            print(f"judge_model={judge_model} votes_written={votes}")
+        aggregated = pipeline.aggregate(
+            args.candidates,
+            args.votes,
+            args.output,
+            config.model.judge_names,
+            limit=effective_limit,
+        )
+        print(
+            f"records_written={aggregated} strategy={strategy.value} "
+            "voting=majority judges=3"
+        )
     return 0
 
 

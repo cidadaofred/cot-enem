@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 
-from cot_enem.generation.schema import InitialCoT, SpecifiedCoT
+from cot_enem.generation.schema import EvolvedQuestionCoT, InitialCoT, SpecifiedCoT
 
 
 @dataclass(frozen=True, slots=True)
@@ -12,7 +12,9 @@ class FormatValidation:
 
 
 class FormatValidator:
-    def validate(self, value: InitialCoT | SpecifiedCoT) -> FormatValidation:
+    def validate(
+        self, value: InitialCoT | SpecifiedCoT | EvolvedQuestionCoT
+    ) -> FormatValidation:
         reasons = []
         if not value.reasoning_steps or any(not step.strip() for step in value.reasoning_steps):
             reasons.append("reasoning_steps_invalid")

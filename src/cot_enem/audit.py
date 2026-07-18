@@ -1,11 +1,12 @@
-"""CPU-only integrity audit for persisted Phase 3 ensemble artifacts."""
+"""CPU-only integrity audits for persisted ensemble artifacts."""
 
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-from cot_enem.dataset.schema import EvolvedRecord, NormalizedQuestion
+from cot_enem.dataset.schema import EvolvedRecord, NormalizedQuestion, Strategy
 from cot_enem.ensemble_pipeline import EnsembleVote, SpecifyCandidate
+from cot_enem.phase4_pipeline import EvolutionSeed, QuestionEvolutionCandidate
 from cot_enem.utils.jsonl import read_jsonl
 
 
@@ -116,6 +117,112 @@ def audit_phase3(
         "acceptance_rate": (
             statuses["accepted"] / len(results) * 100 if results else 0.0
         ),
+        "missing_candidates": len(missing_candidates),
+        "incomplete_votes": len(incomplete_votes),
+        "missing_results": len(missing_results),
+        "complete": complete,
+    }
+
+
+def audit_phase4_branch(
+    seed_path: str | Path,
+    candidate_path: str | Path,
+    vote_path: str | Path,
+    output_path: str | Path,
+    judge_models: list[str],
+    strategy: Strategy,
+    *,
+    require_complete: bool = True,
+) -> dict[str, Any]:
+    """Audit one Complicate/Diversify branch without loading an LLM."""
+
+    if strategy not in {Strategy.COMPLICATE, Strategy.DIVERSIFY}:
+        raise ValueError("Phase 4 audit supports complicate or diversify")
+    if len(judge_models) != 3 or len(set(judge_models)) != 3:
+        raise ValueError("Phase 4 audit requires exactly three distinct judge models")
+    seeds = _validated(seed_path, EvolutionSeed)
+    candidates = _validated(candidate_path, QuestionEvolutionCandidate)
+    votes = _validated(vote_path, EnsembleVote)
+    results = _validated(output_path, EvolvedRecord)
+    _require_unique([seed.id for seed in seeds], "evolution seeds")
+    _require_unique([candidate.id for candidate in candidates], "candidates")
+    _require_unique(
+        [(vote.candidate_id, vote.judge_model) for vote in votes],
+        "candidate/model votes",
+    )
+    _require_unique([result.id for result in results], "aggregated results")
+    seed_by_id = {seed.id: seed for seed in seeds}
+    candidate_by_id = {candidate.id: candidate for candidate in candidates}
+    result_by_id = {result.id: result for result in results}
+    votes_by_candidate: dict[str, dict[str, EnsembleVote]] = defaultdict(dict)
+    errors: list[str] = []
+    for candidate in candidates:
+        if candidate.strategy != strategy:
+            errors.append(f"{candidate.id}: unexpected strategy {candidate.strategy}")
+        if candidate.parent_id not in seed_by_id:
+            errors.append(f"{candidate.id}: parent seed not found")
+        elif candidate.root_id != seed_by_id[candidate.parent_id].root_id:
+            errors.append(f"{candidate.id}: root lineage mismatch")
+    for vote in votes:
+        if vote.candidate_id not in candidate_by_id:
+            errors.append(f"{vote.candidate_id}: orphan vote")
+        if vote.judge_model not in judge_models:
+            errors.append(f"{vote.candidate_id}: unexpected judge {vote.judge_model}")
+        votes_by_candidate[vote.candidate_id][vote.judge_model] = vote
+    for result in results:
+        candidate = candidate_by_id.get(result.id)
+        if candidate is None:
+            errors.append(f"{result.id}: result has no candidate")
+            continue
+        if result.strategy != strategy:
+            errors.append(f"{result.id}: result strategy mismatch")
+        if (
+            result.root_id != candidate.root_id
+            or result.parent_id != candidate.parent_id
+            or result.generation != candidate.generation
+        ):
+            errors.append(f"{result.id}: result lineage mismatch")
+        model_votes = votes_by_candidate.get(result.id, {})
+        if set(model_votes) != set(judge_models):
+            errors.append(f"{result.id}: result does not have all configured votes")
+            continue
+        evolution = sum(model_votes[name].evolution.approved for name in judge_models) >= 2
+        correctness = (
+            sum(model_votes[name].correctness.approved for name in judge_models) >= 2
+        )
+        if result.validation.evolution_success != evolution:
+            errors.append(f"{result.id}: evolution majority mismatch")
+        if result.validation.correctness_verified != correctness:
+            errors.append(f"{result.id}: correctness majority mismatch")
+    if errors:
+        raise ValueError("Phase 4 integrity errors:\n- " + "\n- ".join(errors[:50]))
+    missing_candidates = set(seed_by_id) - {
+        candidate.parent_id for candidate in candidates
+    }
+    incomplete_votes = {
+        candidate_id: sorted(set(judge_models) - set(votes_by_candidate[candidate_id]))
+        for candidate_id in candidate_by_id
+        if set(votes_by_candidate[candidate_id]) != set(judge_models)
+    }
+    missing_results = set(candidate_by_id) - set(result_by_id)
+    complete = not missing_candidates and not incomplete_votes and not missing_results
+    if require_complete and not complete:
+        raise ValueError(
+            f"Phase 4 {strategy.value} artifacts are valid but incomplete: "
+            f"missing_candidates={len(missing_candidates)}, "
+            f"incomplete_votes={len(incomplete_votes)}, "
+            f"missing_results={len(missing_results)}"
+        )
+    statuses = Counter(result.status.value for result in results)
+    return {
+        "strategy": strategy.value,
+        "seeds": len(seeds),
+        "candidates": len(candidates),
+        "votes": len(votes),
+        "expected_votes": len(candidates) * 3,
+        "results": len(results),
+        "accepted": statuses["accepted"],
+        "rejected": statuses["rejected"],
         "missing_candidates": len(missing_candidates),
         "incomplete_votes": len(incomplete_votes),
         "missing_results": len(missing_results),

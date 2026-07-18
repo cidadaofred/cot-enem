@@ -193,3 +193,14 @@ Para máquinas Windows com poucos recursos, use
 clona o repositório para `/content`, usa `Qwen/Qwen2.5-7B-Instruct`
 quantizado em 4 bits na GPU e persiste entrada, cache e resultados no Google
 Drive. Consulte o procedimento completo em `docs/EXECUCAO_COLAB.md`.
+
+## Fase 4: Complicate e Diversify
+
+A Fase 4 reutiliza o CoT inicial congelado da Fase 3 e executa `Complicate` e
+`Diversify` como ramos independentes, cada um com candidatos, votos e resultados
+próprios. A linhagem é registrada por `root_id`, `parent_id` e `generation`. O mesmo
+contrato de sementes aceita resultados aprovados de uma geração anterior, permitindo
+uma futura reprodução das rodadas iterativas do ChainLM sem acoplar as fases.
+
+Use `notebooks/fase4_colab.ipynb` para execução remota e consulte `docs/FASE4.md`
+para arquitetura, arquivos, comandos e auditoria.

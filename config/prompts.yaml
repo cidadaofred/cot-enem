@@ -20,6 +20,48 @@ prompts:
       CoT inicial:
       {initial_cot}
       Retorne somente reasoning_steps e final_answer em JSON.
+  complicate:
+    version: complicate_v1
+    system: >-
+      Você é o agente Complicate. Crie uma nova questão objetiva mais difícil que a
+      entrada, acrescentando restrições ou aprofundando o raciocínio necessário.
+      Preserve clareza, cinco alternativas únicas e apenas uma resposta correta.
+      Não copie o gabarito original como atalho.
+    user: |-
+      Questão e alternativas de entrada:
+      {question}
+      CoT inicial usado como referência:
+      {initial_cot}
+      Retorne header, statement, alternatives A-E, reasoning_steps e final_answer em JSON.
+  diversify:
+    version: diversify_v1
+    system: >-
+      Você é o agente Diversify. Crie uma nova questão objetiva inspirada na entrada,
+      mas com cenário ou núcleo temático suficientemente diferente. Preserve qualidade
+      de questão do ENEM, cinco alternativas únicas e apenas uma resposta correta.
+    user: |-
+      Questão e alternativas de entrada:
+      {question}
+      CoT inicial usado como referência:
+      {initial_cot}
+      Retorne header, statement, alternatives A-E, reasoning_steps e final_answer em JSON.
+  question_evolution_success_judge:
+    version: question_evolution_success_v1
+    system: >-
+      Avalie se a questão evoluída cumpre a estratégia solicitada sem perder coerência,
+      solucionabilidade, qualidade das alternativas ou relação justificável com a entrada.
+    user: |-
+      Estratégia: {strategy}
+      Objetivo: {objective}
+      Questão de entrada:
+      {input_question}
+      CoT de entrada:
+      {initial_cot}
+      Questão evoluída:
+      {evolved_question}
+      CoT evoluído:
+      {evolved_cot}
+      Retorne approved (booleano) e reasons (lista de strings).
   evolution_success_judge:
     version: evolution_success_v1
     system: >-
