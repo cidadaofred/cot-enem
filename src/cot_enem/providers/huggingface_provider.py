@@ -1,6 +1,7 @@
 """Optional local/Colab Hugging Face text-generation provider."""
 
 import json
+import re
 from typing import Any
 
 from cot_enem.providers.base import LLMProvider, LLMResponse, Message
@@ -162,6 +163,14 @@ class HuggingFaceProvider(LLMProvider):
             except StructuredResponseError as exc:
                 last_error = exc
                 if attempt == self.max_format_attempts:
+                    salvaged = self._salvage_binary_judge(content, response_schema)
+                    if salvaged is not None:
+                        return LLMResponse(
+                            content=content,
+                            parsed=salvaged,
+                            model=self.model,
+                            raw={"structured_response_salvaged": True},
+                        )
                     break
                 conversation.extend(
                     [
@@ -232,3 +241,28 @@ class HuggingFaceProvider(LLMProvider):
             else:
                 normalized["reasons"] = [str(reason)]
         return normalized
+
+    @staticmethod
+    def _salvage_binary_judge(
+        content: str, schema: dict[str, Any] | None
+    ) -> dict[str, Any] | None:
+        """Recover only an explicit binary vote from a truncated judge explanation."""
+
+        if schema is None or set(schema.get("required", [])) != {"approved", "reasons"}:
+            return None
+        match = re.search(
+            r"""["']?approved["']?\s*:\s*(true|false)""",
+            content,
+            flags=re.IGNORECASE,
+        )
+        if match:
+            approved = match.group(1).casefold() == "true"
+        else:
+            plain = re.match(r"^\s*(yes|no|sim|não|nao)\b", content, re.IGNORECASE)
+            if plain is None:
+                return None
+            approved = plain.group(1).casefold() in {"yes", "sim"}
+        return {
+            "approved": approved,
+            "reasons": ["structured_response_salvaged_from_truncated_output"],
+        }

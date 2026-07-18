@@ -164,3 +164,22 @@ def test_huggingface_provider_normalizes_binary_judge_aliases(
     )
     assert normalized["approved"] is approved
     assert normalized["reasons"] == reasons
+
+
+def test_huggingface_provider_salvages_explicit_vote_from_truncated_json():
+    value = HuggingFaceProvider._salvage_binary_judge(
+        '{"approved": true, "reasons": ["A long unfinished explanation',
+        {"required": ["approved", "reasons"]},
+    )
+    assert value == {
+        "approved": True,
+        "reasons": ["structured_response_salvaged_from_truncated_output"],
+    }
+
+
+def test_huggingface_provider_does_not_guess_vote_without_explicit_decision():
+    value = HuggingFaceProvider._salvage_binary_judge(
+        "The reasoning looks plausible but needs review.",
+        {"required": ["approved", "reasons"]},
+    )
+    assert value is None
