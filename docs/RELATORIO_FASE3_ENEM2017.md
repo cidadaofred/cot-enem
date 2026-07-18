@@ -1,9 +1,11 @@
 # Relatório técnico — Fase 3 do CoT-ENEM
 
-**Data da execução:** 17 de julho de 2026  
+**Data da execução:** 17–18 de julho de 2026  
 **Escopo:** ENEM 2017  
 **Estratégia executada:** Specify  
-**Estado do projeto:** Fase 3 concluída; Complicate e Diversify ainda não executados
+**Estado do projeto:** implementação da Fase 3 concluída; Complicate e Diversify ainda
+não executados. A conclusão do processamento integral do ensemble é atestada pela
+auditoria descrita na Seção 13.
 
 ## 1. Objetivo
 
@@ -199,3 +201,79 @@ persistidos antes da troca de modelo. Essa revisão permite comparar diretamente
 único e maioria heterogênea sobre os mesmos candidatos. Os resultados do ensemble
 devem ser relatados separadamente após a nova execução; a taxa de 60,6% permanece
 identificada como resultado do baseline de juiz único.
+
+## 13. Entregáveis concretos da Fase 3
+
+A Fase 3 entrega um pipeline reproduzível para gerar candidatos CoT com a estratégia
+Specify e filtrá-los por maioria heterogênea. O gerador
+`Qwen/Qwen2.5-7B-Instruct` produz o CoT inicial e sua evolução Specify. Em seguida,
+três modelos avaliam cada candidato de forma independente:
+
+- `Qwen/Qwen2.5-7B-Instruct`;
+- `mistralai/Mistral-7B-Instruct-v0.3`;
+- `microsoft/Phi-3.5-mini-instruct`.
+
+Cada juiz emite duas decisões estruturadas: sucesso da evolução e correção do
+raciocínio. Assim, cada candidato completo possui seis decisões, correspondentes a
+três modelos multiplicados por dois critérios. A decisão agregada em cada critério
+exige pelo menos dois votos favoráveis.
+
+### 13.1 Artefatos persistentes
+
+| Artefato | Conteúdo |
+|---|---|
+| `data/processed/enem_normalized.jsonl` | 86 questões normalizadas, incluindo elegibilidade e justificativas |
+| `outputs/datasets/phase3_candidates.jsonl` | CoT inicial e candidato produzido pelo Specify |
+| `outputs/datasets/phase3_judge_votes.jsonl` | Votos individuais, modelo julgador e justificativas |
+| `outputs/datasets/cot_enem_specify_ensemble_v1.jsonl` | Resultado agregado por maioria, incluindo aceitos e rejeitados |
+
+Os arquivos intermediários fazem parte do resultado experimental. Eles permitem
+recalcular a maioria, estudar concordância entre juízes e retomar uma execução
+interrompida sem gerar novamente etapas concluídas.
+
+### 13.2 Garantias operacionais
+
+A implementação inclui:
+
+- gravação incremental em JSONL;
+- IDs determinísticos e prevenção de duplicidades;
+- retomada de candidatos, votos e resultados persistidos;
+- carregamento sequencial e liberação de VRAM entre os modelos;
+- quantização NF4 em 4 bits e computação FP16 para a Tesla T4;
+- aplicação de `--limit` à geração, aos três juízes e à agregação;
+- validação de tipos antes da persistência;
+- tentativas de correção para respostas estruturadas inválidas;
+- normalização controlada de variações JSON retornadas pelos modelos;
+- rejeição de respostas que contenham apenas o molde do JSON Schema;
+- preservação explícita de votos recuperados de saídas truncadas;
+- auditoria final executável inteiramente em CPU.
+
+### 13.3 Auditoria e critério de conclusão
+
+O notebook `notebooks/fase3_colab.ipynb` termina com uma auditoria que valida os
+schemas dos quatro JSONL, duplicidades, referências entre questão, candidato, voto e
+resultado, presença dos três modelos, recálculo independente da maioria e coerência
+entre `validation.accepted` e o status final.
+
+Durante smoke tests, com `LIMIT` definido, a auditoria aceita um subconjunto
+estruturalmente consistente. Para uma execução integral, sem `LIMIT`, a Fase 3 somente
+é considerada completamente processada quando a saída apresenta:
+
+```text
+AUDITORIA ESTRUTURAL: APROVADA
+PROCESSAMENTO COMPLETO: True
+```
+
+`AUDITORIA ESTRUTURAL: APROVADA` com `PROCESSAMENTO COMPLETO: False` significa que
+os artefatos existentes são válidos, mas ainda há candidatos, votos ou resultados
+pendentes. Dessa forma, conclusão da implementação e conclusão de uma execução
+integral são registradas separadamente.
+
+### 13.4 Síntese
+
+Concretamente, a Fase 3 estabeleceu a infraestrutura de geração, evolução,
+julgamento heterogêneo, persistência, retomada, votação majoritária e auditoria do
+ramo Specify para o ENEM 2017. O baseline anterior, com 20 aceitos e 13 rejeitados,
+permanece identificado como resultado de juiz único. As métricas do ensemble devem
+ser extraídas do arquivo `cot_enem_specify_ensemble_v1.jsonl` após a auditoria
+integral, sem substituir ou misturar os dois protocolos.
