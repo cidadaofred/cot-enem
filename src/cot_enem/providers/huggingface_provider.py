@@ -203,7 +203,18 @@ class HuggingFaceProvider(LLMProvider):
         required = set(schema.get("required", []))
         if required != {"approved", "reasons"}:
             return value
-        normalized = dict(value)
+        normalized = {
+            key: HuggingFaceProvider._unwrap_typed_json_value(item)
+            for key, item in value.items()
+        }
+        if isinstance(normalized.get("approved"), str):
+            token = normalized["approved"].strip().casefold().rstrip(".")
+            if token in {"yes", "sim", "true", "approved", "correct", "pass"}:
+                normalized["approved"] = True
+            elif token in {"no", "não", "nao", "false", "rejected", "incorrect", "fail"}:
+                normalized["approved"] = False
+        if isinstance(normalized.get("reasons"), str):
+            normalized["reasons"] = [normalized["reasons"]]
         if "approved" not in normalized:
             decision_keys = (
                 "answer",
@@ -241,6 +252,25 @@ class HuggingFaceProvider(LLMProvider):
             else:
                 normalized["reasons"] = [str(reason)]
         return normalized
+
+    @staticmethod
+    def _unwrap_typed_json_value(value: Any) -> Any:
+        """Unwrap model-produced JSON values annotated with `type` and `value/items`."""
+
+        if not isinstance(value, dict):
+            return value
+        if "value" in value:
+            return HuggingFaceProvider._unwrap_typed_json_value(value["value"])
+        if value.get("type") == "array" and "items" in value:
+            items = value["items"]
+            if isinstance(items, list):
+                return [
+                    HuggingFaceProvider._unwrap_typed_json_value(item)
+                    for item in items
+                ]
+            unwrapped = HuggingFaceProvider._unwrap_typed_json_value(items)
+            return unwrapped if isinstance(unwrapped, list) else [unwrapped]
+        return value
 
     @staticmethod
     def _salvage_binary_judge(

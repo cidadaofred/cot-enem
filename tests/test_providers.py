@@ -183,3 +183,20 @@ def test_huggingface_provider_does_not_guess_vote_without_explicit_decision():
         {"required": ["approved", "reasons"]},
     )
     assert value is None
+
+
+def test_huggingface_provider_unwraps_phi_typed_judge_values():
+    normalized = HuggingFaceProvider._normalize_judge_response(
+        {
+            "approved": {"type": "boolean", "value": True},
+            "reasons": {
+                "type": "array",
+                "items": {"type": "string", "value": "Resposta consistente."},
+            },
+        },
+        {"required": ["approved", "reasons"]},
+    )
+    assert normalized == {
+        "approved": True,
+        "reasons": ["Resposta consistente."],
+    }
