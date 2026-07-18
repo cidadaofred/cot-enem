@@ -18,6 +18,23 @@ class VerificationCheck:
     detail: str
 
 
+def _cached_huggingface_models_gb(cache: Path, model_names: list[str]) -> float:
+    """Measure only cache repositories used by this run, including partial downloads."""
+
+    hub = cache / "hub"
+    total_bytes = 0
+    for model_name in set(model_names):
+        blobs = hub / f"models--{model_name.replace('/', '--')}" / "blobs"
+        if not blobs.exists():
+            continue
+        total_bytes += sum(
+            path.stat().st_size
+            for path in blobs.rglob("*")
+            if path.is_file()
+        )
+    return total_bytes / 1024**3
+
+
 def verify_environment(context: ExecutionContext) -> list[VerificationCheck]:
     config = context.loaded_config.config
     checks = [
@@ -50,11 +67,18 @@ def verify_environment(context: ExecutionContext) -> list[VerificationCheck]:
         try:
             cache.mkdir(parents=True, exist_ok=True)
             cache_free = available_disk_gb(cache)
+            model_names = [config.model.name, *config.model.judge_names]
+            relevant_cached = _cached_huggingface_models_gb(cache, model_names)
+            available_capacity = cache_free + relevant_cached
             checks.append(
                 VerificationCheck(
                     "model_cache_disk_space",
-                    cache_free >= 45,
-                    f"{cache_free:.1f} GB free; expected at least 45 GB for three models",
+                    available_capacity >= 45,
+                    (
+                        f"{cache_free:.1f} GB free + {relevant_cached:.1f} GB already "
+                        f"cached = {available_capacity:.1f} GB available capacity; "
+                        "expected at least 45 GB for three models"
+                    ),
                 )
             )
         except OSError as exc:
