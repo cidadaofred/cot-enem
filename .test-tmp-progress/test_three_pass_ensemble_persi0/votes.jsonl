@@ -1,0 +1,3 @@
+{"candidate_id": "cotenem_331d328743ddcb09", "root_id": "enem_2017_001", "judge_model": "judge-1", "evolution": {"approved": true, "reasons": []}, "correctness": {"approved": true, "reasons": []}, "timestamp": "2026-07-18T03:57:22.106671Z"}
+{"candidate_id": "cotenem_331d328743ddcb09", "root_id": "enem_2017_001", "judge_model": "judge-2", "evolution": {"approved": true, "reasons": []}, "correctness": {"approved": false, "reasons": []}, "timestamp": "2026-07-18T03:57:22.110968Z"}
+{"candidate_id": "cotenem_331d328743ddcb09", "root_id": "enem_2017_001", "judge_model": "judge-3", "evolution": {"approved": false, "reasons": []}, "correctness": {"approved": true, "reasons": []}, "timestamp": "2026-07-18T03:57:22.116692Z"}

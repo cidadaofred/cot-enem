@@ -214,6 +214,20 @@ def test_huggingface_provider_unwraps_phi_typed_judge_values():
     }
 
 
+def test_huggingface_provider_unwraps_phi_single_value_enum():
+    normalized = HuggingFaceProvider._normalize_judge_response(
+        {
+            "approved": {"enum": [True]},
+            "reasons": ["Resposta consistente."],
+        },
+        {"required": ["approved", "reasons"]},
+    )
+    assert normalized == {
+        "approved": True,
+        "reasons": ["Resposta consistente."],
+    }
+
+
 def test_huggingface_provider_unwraps_phi_filled_schema_object():
     normalized = HuggingFaceProvider._normalize_judge_response(
         {

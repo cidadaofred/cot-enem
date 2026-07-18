@@ -55,6 +55,7 @@ class HuggingFaceProvider(LLMProvider):
                     BitsAndBytesConfig,
                     pipeline,
                 )
+                from transformers.utils import logging as transformers_logging
             except ImportError as exc:
                 raise ProviderConfigurationError(
                     "install the optional 'huggingface' dependencies to use this provider"
@@ -83,6 +84,9 @@ class HuggingFaceProvider(LLMProvider):
                 )
             elif self.quantization == "8bit":
                 model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
+            # Colab may render the final Transformers tqdm checkpoint line twice.
+            # Disable that internal progress bar and leave lifecycle reporting to the CLI.
+            transformers_logging.disable_progress_bar()
             tokenizer = AutoTokenizer.from_pretrained(self.model)
             model = AutoModelForCausalLM.from_pretrained(self.model, **model_kwargs)
             pipeline_kwargs: dict[str, Any] = {
@@ -263,6 +267,8 @@ class HuggingFaceProvider(LLMProvider):
             return value
         if "value" in value:
             return HuggingFaceProvider._unwrap_typed_json_value(value["value"])
+        if isinstance(value.get("enum"), list) and len(value["enum"]) == 1:
+            return HuggingFaceProvider._unwrap_typed_json_value(value["enum"][0])
         if value.get("type") == "array" and "items" in value:
             items = value["items"]
             if isinstance(items, list):
