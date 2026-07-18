@@ -202,12 +202,15 @@ def main(argv: list[str] | None = None) -> int:
         ensemble = SpecifyEnsemblePipeline(
             prompts, temperature=config.model.temperature
         )
+        effective_limit = (
+            args.limit if args.limit is not None else config.pipeline.limit
+        )
         if args.existing_results:
             generated = ensemble.import_candidates(
                 args.input,
                 args.existing_results,
                 args.candidates,
-                limit=args.limit if args.limit is not None else config.pipeline.limit,
+                limit=effective_limit,
             )
         else:
             generator_provider = _build_huggingface_provider(context, config.model.name)
@@ -220,7 +223,7 @@ def main(argv: list[str] | None = None) -> int:
                 args.input,
                 args.candidates,
                 generator_provider,
-                limit=args.limit if args.limit is not None else config.pipeline.limit,
+                limit=effective_limit,
             )
             generator_provider.unload()
         print(f"candidates_written={generated}")
@@ -231,7 +234,12 @@ def main(argv: list[str] | None = None) -> int:
                 flush=True,
             )
             judge_provider = _build_huggingface_provider(context, judge_model)
-            votes = ensemble.collect_votes(args.candidates, args.votes, judge_provider)
+            votes = ensemble.collect_votes(
+                args.candidates,
+                args.votes,
+                judge_provider,
+                limit=effective_limit,
+            )
             judge_provider.unload()
             print(f"judge_model={judge_model} votes_written={votes}")
         aggregated = ensemble.aggregate(
@@ -239,6 +247,7 @@ def main(argv: list[str] | None = None) -> int:
             args.votes,
             args.output,
             config.model.judge_names,
+            limit=effective_limit,
         )
         print(f"records_written={aggregated} voting=majority judges=3")
     return 0

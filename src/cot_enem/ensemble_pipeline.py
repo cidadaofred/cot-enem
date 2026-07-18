@@ -87,10 +87,14 @@ class SpecifyEnsemblePipeline:
         agent = SpecifyAgent(provider, self.prompts, temperature=self.temperature)
         execution_id = str(uuid4())
         written = 0
+        selected = 0
         for raw in read_jsonl(input_path):
             question = NormalizedQuestion.model_validate(raw)
             if not question.eligible:
                 continue
+            selected += 1
+            if limit is not None and selected > limit:
+                break
             candidate_id = self.candidate_id(question.id)
             if candidate_id in existing:
                 continue
@@ -112,8 +116,6 @@ class SpecifyEnsemblePipeline:
             )
             existing.add(candidate_id)
             written += 1
-            if limit is not None and written >= limit:
-                break
         return written
 
     def import_candidates(
@@ -138,9 +140,15 @@ class SpecifyEnsemblePipeline:
             item["id"] for item in read_jsonl(candidate_path) if isinstance(item.get("id"), str)
         }
         written = 0
+        selected = 0
         for raw in read_jsonl(existing_result_path):
             record = EvolvedRecord.model_validate(raw)
-            if record.strategy != Strategy.SPECIFY or record.id in existing:
+            if record.strategy != Strategy.SPECIFY:
+                continue
+            selected += 1
+            if limit is not None and selected > limit:
+                break
+            if record.id in existing:
                 continue
             root = roots.get(record.root_id)
             if root is None:
@@ -169,8 +177,6 @@ class SpecifyEnsemblePipeline:
             )
             existing.add(record.id)
             written += 1
-            if limit is not None and written >= limit:
-                break
         return written
 
     @staticmethod
@@ -189,6 +195,8 @@ class SpecifyEnsemblePipeline:
         candidate_path: str | Path,
         vote_path: str | Path,
         provider: LLMProvider,
+        *,
+        limit: int | None = None,
     ) -> int:
         judge_model = str(getattr(provider, "model", type(provider).__name__))
         existing = {
@@ -198,7 +206,9 @@ class SpecifyEnsemblePipeline:
         evolution_judge = EvolutionSuccessJudge(provider, self.prompts)
         correctness_judge = CorrectnessJudge(provider, self.prompts)
         written = 0
-        for raw in read_jsonl(candidate_path):
+        for index, raw in enumerate(read_jsonl(candidate_path), start=1):
+            if limit is not None and index > limit:
+                break
             candidate = SpecifyCandidate.model_validate(raw)
             key = (candidate.id, judge_model)
             if key in existing:
@@ -225,6 +235,8 @@ class SpecifyEnsemblePipeline:
         vote_path: str | Path,
         output_path: str | Path,
         judge_models: list[str],
+        *,
+        limit: int | None = None,
     ) -> int:
         if len(judge_models) != 3 or len(set(judge_models)) != 3:
             raise ValueError("majority voting requires exactly three distinct judge models")
@@ -237,7 +249,9 @@ class SpecifyEnsemblePipeline:
             item["id"] for item in read_jsonl(output_path) if isinstance(item.get("id"), str)
         }
         written = 0
-        for raw in read_jsonl(candidate_path):
+        for index, raw in enumerate(read_jsonl(candidate_path), start=1):
+            if limit is not None and index > limit:
+                break
             candidate = SpecifyCandidate.model_validate(raw)
             if candidate.id in existing:
                 continue
