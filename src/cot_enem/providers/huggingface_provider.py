@@ -203,6 +203,8 @@ class HuggingFaceProvider(LLMProvider):
         required = set(schema.get("required", []))
         if required != {"approved", "reasons"}:
             return value
+        if value.get("type") == "object" and isinstance(value.get("properties"), dict):
+            value = value["properties"]
         normalized = {
             key: HuggingFaceProvider._unwrap_typed_json_value(item)
             for key, item in value.items()

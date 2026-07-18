@@ -200,3 +200,23 @@ def test_huggingface_provider_unwraps_phi_typed_judge_values():
         "approved": True,
         "reasons": ["Resposta consistente."],
     }
+
+
+def test_huggingface_provider_unwraps_phi_filled_schema_object():
+    normalized = HuggingFaceProvider._normalize_judge_response(
+        {
+            "type": "object",
+            "properties": {
+                "approved": {"type": "boolean", "value": False},
+                "reasons": {
+                    "type": "array",
+                    "items": ["Primeiro motivo.", "Segundo motivo."],
+                },
+            },
+        },
+        {"required": ["approved", "reasons"]},
+    )
+    assert normalized == {
+        "approved": False,
+        "reasons": ["Primeiro motivo.", "Segundo motivo."],
+    }
