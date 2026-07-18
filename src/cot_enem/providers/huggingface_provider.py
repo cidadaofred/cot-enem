@@ -286,7 +286,13 @@ class HuggingFaceProvider(LLMProvider):
                 normalized["reasons"] = []
             else:
                 normalized["reasons"] = [str(reason)]
-        return normalized
+        # JudgeDecision is intentionally strict. Models sometimes echo JSON Schema
+        # metadata such as `required`; retain only the canonical vote contract.
+        return {
+            key: normalized[key]
+            for key in ("approved", "reasons")
+            if key in normalized
+        }
 
     @staticmethod
     def _require_normalized_judge_types(

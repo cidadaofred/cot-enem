@@ -278,6 +278,22 @@ def test_huggingface_provider_unwraps_phi_single_value_enum():
     }
 
 
+def test_huggingface_provider_drops_echoed_json_schema_metadata():
+    normalized = HuggingFaceProvider._normalize_judge_response(
+        {
+            "approved": True,
+            "reasons": ["Resposta consistente."],
+            "required": ["approved", "reasons"],
+            "additionalProperties": False,
+        },
+        {"required": ["approved", "reasons"]},
+    )
+    assert normalized == {
+        "approved": True,
+        "reasons": ["Resposta consistente."],
+    }
+
+
 def test_huggingface_provider_unwraps_phi_filled_schema_object():
     normalized = HuggingFaceProvider._normalize_judge_response(
         {
