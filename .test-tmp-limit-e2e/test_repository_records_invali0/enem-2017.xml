@@ -1,0 +1,9 @@
+<exam>
+        <question id="1"><statement>Incompleta</statement>
+          <option id="A"></option><option id="B"></option><option id="C"></option>
+          <option id="D"></option><option id="E" correct="Yes"></option>
+        </question>
+        <question id="2"><statement>Completa</statement>
+          <option id="A" correct="Yes">A</option><option id="B">B</option>
+          <option id="C">C</option><option id="D">D</option><option id="E">E</option>
+        </question></exam>

@@ -1,0 +1,4 @@
+runtime:
+  device: cpu
+model:
+  name: profile
