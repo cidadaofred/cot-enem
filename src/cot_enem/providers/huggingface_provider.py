@@ -1,12 +1,40 @@
 """Optional local/Colab Hugging Face text-generation provider."""
 
+from contextlib import redirect_stderr
 import json
 import re
+import sys
 from typing import Any
 
 from cot_enem.providers.base import LLMProvider, LLMResponse, Message
 from cot_enem.providers.errors import ProviderConfigurationError, StructuredResponseError
 from cot_enem.providers.structured import parse_json_object, require_schema_keys
+
+
+class _CheckpointProgressStream:
+    """Keep tqdm progress while dropping its repeated final checkpoint render."""
+
+    def __init__(self, stream: Any) -> None:
+        self.stream = stream
+        self._completed: set[tuple[str, str]] = set()
+
+    def write(self, value: str) -> int:
+        match = re.search(
+            r"(Loading checkpoint shards):\s*100%.*?\|\s*(\d+/\d+)",
+            value,
+        )
+        if match is not None:
+            key = (match.group(1), match.group(2))
+            if key in self._completed:
+                return len(value)
+            self._completed.add(key)
+        return self.stream.write(value)
+
+    def flush(self) -> None:
+        self.stream.flush()
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self.stream, name)
 
 
 class HuggingFaceProvider(LLMProvider):
@@ -84,7 +112,11 @@ class HuggingFaceProvider(LLMProvider):
             elif self.quantization == "8bit":
                 model_kwargs["quantization_config"] = BitsAndBytesConfig(load_in_8bit=True)
             tokenizer = AutoTokenizer.from_pretrained(self.model)
-            model = AutoModelForCausalLM.from_pretrained(self.model, **model_kwargs)
+            progress_stream = _CheckpointProgressStream(sys.stderr)
+            with redirect_stderr(progress_stream):
+                model = AutoModelForCausalLM.from_pretrained(
+                    self.model, **model_kwargs
+                )
             pipeline_kwargs: dict[str, Any] = {
                 "task": "text-generation",
                 "model": model,

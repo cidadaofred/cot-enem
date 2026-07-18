@@ -1,9 +1,13 @@
 import json
+from io import StringIO
 
 import pytest
 
 from cot_enem.providers.errors import ProviderConfigurationError, StructuredResponseError
-from cot_enem.providers.huggingface_provider import HuggingFaceProvider
+from cot_enem.providers.huggingface_provider import (
+    HuggingFaceProvider,
+    _CheckpointProgressStream,
+)
 from cot_enem.providers.mock_provider import MockLLMProvider
 from cot_enem.providers.openai_compatible import OpenAICompatibleProvider
 from cot_enem.providers.structured import parse_json_object
@@ -142,6 +146,23 @@ def test_huggingface_provider_keeps_remote_runtime_options_lazy():
     assert provider.precision == "fp16"
     assert provider.quantization == "4bit"
     assert provider.max_new_tokens == 512
+
+
+def test_checkpoint_progress_keeps_updates_and_deduplicates_only_final_render():
+    output = StringIO()
+    progress = _CheckpointProgressStream(output)
+    progress.write(
+        "\rLoading checkpoint shards:  50%|#####     | 1/2 [00:18<00:18, 18.00s/it]"
+    )
+    progress.write(
+        "\rLoading checkpoint shards: 100%|##########| 2/2 [00:36<00:00, 17.47s/it]"
+    )
+    progress.write(
+        "\rLoading checkpoint shards: 100%|##########| 2/2 [00:36<00:00, 18.41s/it]"
+    )
+    rendered = output.getvalue()
+    assert "50%" in rendered
+    assert rendered.count("100%") == 1
 
 
 @pytest.mark.parametrize(
