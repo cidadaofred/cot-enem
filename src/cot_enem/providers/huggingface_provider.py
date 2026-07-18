@@ -287,6 +287,13 @@ class HuggingFaceProvider(LLMProvider):
             content,
             flags=re.IGNORECASE,
         )
+        if match is None:
+            match = re.search(
+                r"""["']?approved["']?\s*:\s*\{[^{}]*"""
+                r"""["']?value["']?\s*:\s*(true|false)""",
+                content,
+                flags=re.IGNORECASE,
+            )
         if match:
             approved = match.group(1).casefold() == "true"
         else:

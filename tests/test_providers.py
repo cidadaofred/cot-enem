@@ -177,6 +177,18 @@ def test_huggingface_provider_salvages_explicit_vote_from_truncated_json():
     }
 
 
+def test_huggingface_provider_salvages_phi_typed_vote_from_truncated_schema():
+    value = HuggingFaceProvider._salvage_binary_judge(
+        '{"type":"object","properties":{"approved":{"type":"boolean","value":true},'
+        '"reasons":{"type":"array","items":["unfinished',
+        {"required": ["approved", "reasons"]},
+    )
+    assert value == {
+        "approved": True,
+        "reasons": ["structured_response_salvaged_from_truncated_output"],
+    }
+
+
 def test_huggingface_provider_does_not_guess_vote_without_explicit_decision():
     value = HuggingFaceProvider._salvage_binary_judge(
         "The reasoning looks plausible but needs review.",

@@ -1,0 +1,6 @@
+runtime:
+  device: auto
+model:
+  name: default
+storage:
+  base_path: out
