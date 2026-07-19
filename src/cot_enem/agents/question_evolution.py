@@ -3,7 +3,7 @@
 from cot_enem.agents.base import EvolutionAgent
 from cot_enem.config import PromptCatalog
 from cot_enem.dataset.schema import NormalizedQuestion, Strategy
-from cot_enem.generation.prompting import render_question, render_steps
+from cot_enem.generation.prompting import render_question_plain, render_steps
 from cot_enem.generation.schema import EvolvedQuestionCoT, InitialCoT
 from cot_enem.providers.base import LLMProvider
 
@@ -64,7 +64,7 @@ class QuestionEvolutionAgent(EvolutionAgent[InitialCoT, EvolvedQuestionCoT]):
                 {
                     "role": "user",
                     "content": self.prompt.user.format(
-                        question=render_question(question),
+                        question=render_question_plain(question),
                         initial_cot=render_steps(value.reasoning_steps),
                     ),
                 },

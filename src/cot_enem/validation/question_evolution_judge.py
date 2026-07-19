@@ -2,7 +2,7 @@
 
 from cot_enem.config import PromptCatalog
 from cot_enem.dataset.schema import NormalizedQuestion, Strategy
-from cot_enem.generation.prompting import render_question, render_steps
+from cot_enem.generation.prompting import render_question, render_question_plain, render_steps
 from cot_enem.generation.schema import EvolvedQuestionCoT, InitialCoT, JudgeDecision
 from cot_enem.providers.base import LLMProvider
 from cot_enem.validation.judge_base import StructuredJudge
@@ -46,7 +46,7 @@ class QuestionEvolutionSuccessJudge(StructuredJudge):
         content = self.prompt.user.format(
             strategy=strategy.value,
             objective=OBJECTIVES[strategy],
-            input_question=render_question(source),
+            input_question=render_question_plain(source),
             initial_cot=render_steps(initial.reasoning_steps),
             evolved_question=render_question(evolved_question),
             evolved_cot=render_steps(evolved.reasoning_steps),

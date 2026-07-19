@@ -27,7 +27,8 @@ prompts:
       entrada, acrescentando restrições ou aprofundando o raciocínio necessário.
       Preserve clareza, cinco alternativas únicas e apenas uma resposta correta.
       Não copie o gabarito original como atalho. Use header curto, enunciado objetivo,
-      alternativas concisas e no máximo oito etapas de raciocínio.
+      alternativas concisas e no máximo oito etapas de raciocínio. Use somente texto
+      simples e notação matemática textual; nunca produza HTML, XML ou MathML.
     user: |-
       Questão e alternativas de entrada:
       {question}
@@ -42,7 +43,8 @@ prompts:
       mas com cenário ou núcleo temático suficientemente diferente. Preserve qualidade
       de questão do ENEM, cinco alternativas únicas e apenas uma resposta correta.
       Use header curto, enunciado objetivo, alternativas concisas e no máximo oito
-      etapas de raciocínio.
+      etapas de raciocínio. Use somente texto simples e notação matemática textual;
+      nunca produza HTML, XML ou MathML.
     user: |-
       Questão e alternativas de entrada:
       {question}
