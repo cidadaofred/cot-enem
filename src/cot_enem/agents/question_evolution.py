@@ -11,7 +11,7 @@ EVOLVED_QUESTION_SCHEMA = {
     "type": "object",
     "properties": {
         "header": {"type": "string"},
-        "statement": {"type": "string"},
+        "statement": {"type": "string", "minLength": 1},
         "alternatives": {
             "type": "object",
             "properties": {
@@ -24,6 +24,7 @@ EVOLVED_QUESTION_SCHEMA = {
             "type": "array",
             "items": {"type": "string"},
             "minItems": 1,
+            "maxItems": 8,
         },
         "final_answer": {"type": "string", "enum": list("ABCDE")},
     },

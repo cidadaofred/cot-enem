@@ -26,25 +26,30 @@ prompts:
       Você é o agente Complicate. Crie uma nova questão objetiva mais difícil que a
       entrada, acrescentando restrições ou aprofundando o raciocínio necessário.
       Preserve clareza, cinco alternativas únicas e apenas uma resposta correta.
-      Não copie o gabarito original como atalho.
+      Não copie o gabarito original como atalho. Use header curto, enunciado objetivo,
+      alternativas concisas e no máximo oito etapas de raciocínio.
     user: |-
       Questão e alternativas de entrada:
       {question}
       CoT inicial usado como referência:
       {initial_cot}
-      Retorne header, statement, alternatives A-E, reasoning_steps e final_answer em JSON.
+      Retorne header (título curto, não o enunciado), statement, alternatives A-E,
+      reasoning_steps e final_answer em JSON. Não repita campos nem explique fora do JSON.
   diversify:
     version: diversify_v1
     system: >-
       Você é o agente Diversify. Crie uma nova questão objetiva inspirada na entrada,
       mas com cenário ou núcleo temático suficientemente diferente. Preserve qualidade
       de questão do ENEM, cinco alternativas únicas e apenas uma resposta correta.
+      Use header curto, enunciado objetivo, alternativas concisas e no máximo oito
+      etapas de raciocínio.
     user: |-
       Questão e alternativas de entrada:
       {question}
       CoT inicial usado como referência:
       {initial_cot}
-      Retorne header, statement, alternatives A-E, reasoning_steps e final_answer em JSON.
+      Retorne header (título curto, não o enunciado), statement, alternatives A-E,
+      reasoning_steps e final_answer em JSON. Não repita campos nem explique fora do JSON.
   question_evolution_success_judge:
     version: question_evolution_success_v1
     system: >-

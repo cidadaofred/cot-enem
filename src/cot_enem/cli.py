@@ -101,14 +101,19 @@ def _build_providers(context) -> tuple[LLMProvider, LLMProvider]:
     raise ValueError("provider='mock' is reserved for tests and cannot run from the CLI")
 
 
-def _build_huggingface_provider(context, model: str) -> HuggingFaceProvider:
+def _build_huggingface_provider(
+    context,
+    model: str,
+    *,
+    max_new_tokens: int | None = None,
+) -> HuggingFaceProvider:
     config = context.loaded_config.config.model
     return HuggingFaceProvider(
         model=model,
         device=context.device.device,
         precision=context.device.precision,
         quantization=config.quantization,
-        max_new_tokens=config.max_new_tokens,
+        max_new_tokens=max_new_tokens or config.max_new_tokens,
     )
 
 
@@ -311,10 +316,15 @@ def main(argv: list[str] | None = None) -> int:
             )
             seed_source = "accepted_parent_results"
         print(f"seeds_written={seeds} source={seed_source}")
-        generator_provider = _build_huggingface_provider(context, config.model.name)
+        phase4_max_new_tokens = max(config.model.max_new_tokens, 1024)
+        generator_provider = _build_huggingface_provider(
+            context,
+            config.model.name,
+            max_new_tokens=phase4_max_new_tokens,
+        )
         print(
             f"phase=candidate_generation strategy={strategy.value} "
-            f"model={config.model.name}",
+            f"model={config.model.name} max_new_tokens={phase4_max_new_tokens}",
             flush=True,
         )
         generated = pipeline.generate_candidates(
