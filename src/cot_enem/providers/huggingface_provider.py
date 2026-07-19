@@ -339,7 +339,7 @@ class HuggingFaceProvider(LLMProvider):
     def _salvage_binary_judge(
         content: str, schema: dict[str, Any] | None
     ) -> dict[str, Any] | None:
-        """Recover only an explicit binary vote from a truncated judge explanation."""
+        """Recover only an explicit binary vote from a judge explanation."""
 
         if schema is None or set(schema.get("required", [])) != {"approved", "reasons"}:
             return None
@@ -357,12 +357,43 @@ class HuggingFaceProvider(LLMProvider):
             )
         if match:
             approved = match.group(1).casefold() == "true"
+            reason = "structured_response_salvaged_from_truncated_output"
         else:
             plain = re.match(r"^\s*(yes|no|sim|não|nao)\b", content, re.IGNORECASE)
-            if plain is None:
-                return None
-            approved = plain.group(1).casefold() in {"yes", "sim"}
+            if plain is not None:
+                approved = plain.group(1).casefold() in {"yes", "sim"}
+                reason = "structured_response_salvaged_from_truncated_output"
+            else:
+                approved = HuggingFaceProvider._explicit_prose_judge_vote(content)
+                if approved is None:
+                    return None
+                reason = content.strip()[:500]
         return {
             "approved": approved,
-            "reasons": ["structured_response_salvaged_from_truncated_output"],
+            "reasons": [reason],
         }
+
+    @staticmethod
+    def _explicit_prose_judge_vote(content: str) -> bool | None:
+        """Extract a vote only from unambiguous judge-verdict phrases."""
+
+        normalized = re.sub(r"\s+", " ", content).strip().casefold()
+        negative_patterns = (
+            r"\bn[aã]o (?:cumpre|atende|satisfaz)\b",
+            r"\b(?:fails? to|does not) (?:meet|satisfy|fulfil|fulfill)\b",
+            r"\b(?:quest[aã]o|resposta|evolu[cç][aã]o) (?:est[aá] )?"
+            r"(?:incorreta|reprovada|rejeitada)\b",
+        )
+        positive_patterns = (
+            r"\b(?:cumpre|atende|satisfaz) (?:a|ao|os|as|o) "
+            r"(?:estrat[eé]gia|objetivo|crit[eé]rio|requisitos?)\b",
+            r"\b(?:meets?|satisfies|fulfils?|fulfills?) (?:the )?"
+            r"(?:strategy|objective|criteria|criterion|requirements?)\b",
+            r"\b(?:quest[aã]o|resposta|evolu[cç][aã]o) (?:est[aá] )?"
+            r"(?:correta|aprovada|aceita)\b",
+        )
+        if any(re.search(pattern, normalized) for pattern in negative_patterns):
+            return False
+        if any(re.search(pattern, normalized) for pattern in positive_patterns):
+            return True
+        return None

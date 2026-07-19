@@ -247,6 +247,27 @@ def test_huggingface_provider_does_not_guess_vote_without_explicit_decision():
     assert value is None
 
 
+def test_huggingface_provider_salvages_explicit_portuguese_prose_verdict():
+    content = (
+        "A questão evoluída cumpre a estratégia solicitada, pois exige "
+        "raciocínio mais profundo."
+    )
+    value = HuggingFaceProvider._salvage_binary_judge(
+        content,
+        {"required": ["approved", "reasons"]},
+    )
+    assert value == {"approved": True, "reasons": [content]}
+
+
+def test_huggingface_provider_prioritizes_explicit_negative_prose_verdict():
+    content = "A questão não cumpre a estratégia solicitada e deve ser rejeitada."
+    value = HuggingFaceProvider._salvage_binary_judge(
+        content,
+        {"required": ["approved", "reasons"]},
+    )
+    assert value == {"approved": False, "reasons": [content]}
+
+
 def test_huggingface_provider_unwraps_phi_typed_judge_values():
     normalized = HuggingFaceProvider._normalize_judge_response(
         {
