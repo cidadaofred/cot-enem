@@ -12,6 +12,7 @@ from cot_enem.ensemble_pipeline import SpecifyEnsemblePipeline
 from cot_enem.generation.initial_cot import InitialCoTGenerator
 from cot_enem.observability import configure_logging
 from cot_enem.phase4_pipeline import QuestionEvolutionEnsemblePipeline
+from cot_enem.phase6 import finalize_phase6
 from cot_enem.pipeline import SpecifyPipeline
 from cot_enem.providers.base import LLMProvider
 from cot_enem.providers.huggingface_provider import HuggingFaceProvider
@@ -175,6 +176,15 @@ def build_parser() -> argparse.ArgumentParser:
     phase4.add_argument("--limit", type=int)
     phase4.add_argument("--prompts", default="config/prompts.yaml")
     _add_runtime_arguments(phase4)
+    finalize = commands.add_parser(
+        "finalize",
+        help="Consolidate accepted/rejected records and produce final CPU-only reports",
+    )
+    finalize.add_argument("--normalized", required=True)
+    finalize.add_argument("--specify", required=True)
+    finalize.add_argument("--complicate", required=True)
+    finalize.add_argument("--diversify", required=True)
+    finalize.add_argument("--output-dir", required=True)
     return parser
 
 
@@ -195,6 +205,15 @@ def main(argv: list[str] | None = None) -> int:
         repository = QuestionRepository()
         count = repository.prepare(args.input, args.output, year=args.year)
         print(f"records_written={count} records_rejected={repository.last_rejected_count}")
+    elif args.command == "finalize":
+        summary = finalize_phase6(
+            args.normalized,
+            args.specify,
+            args.complicate,
+            args.diversify,
+            args.output_dir,
+        )
+        print(json.dumps(summary, ensure_ascii=False, indent=2))
     elif args.command == "evolve":
         context = _load_context(args)
         config = context.loaded_config.config

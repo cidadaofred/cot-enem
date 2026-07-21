@@ -27,8 +27,7 @@ Questão-raiz
 
 Os agentes não são encadeados entre si. Complicate não recebe a saída de Specify, e
 Diversify não recebe a saída de Complicate. Isso reduz propagação de erros e preserva
-uma condição inicial comparável. Até o momento, somente Specify foi implementado e
-executado; Complicate e Diversify ainda não possuem resultados experimentais.
+uma condição inicial comparável. Os três ramos já foram executados para o ENEM 2017.
 
 ### Modelo e ambiente
 
@@ -63,8 +62,8 @@ XML bruto -> parser -> normalizador -> filtros -> JSONL normalizado
 mais difícil no mesmo domínio. `Diversify` cria uma questão estruturalmente diferente
 na mesma competência. As três estratégias partem da questão raiz.
 
-As Fases 1, 2 e 3 estão implementadas: fundação do dataset, infraestrutura
-independente de provedor e primeiro fluxo funcional de CoT inicial + Specify.
+As Fases 1 a 6 estão implementadas: fundação, infraestrutura de LLM, Specify,
+Complicate, Diversify e consolidação final com métricas e relatórios.
 
 ## Instalação e uso
 
@@ -204,3 +203,10 @@ uma futura reprodução das rodadas iterativas do ChainLM sem acoplar as fases.
 
 Use `notebooks/fase4_colab.ipynb` para execução remota e consulte `docs/FASE4.md`
 para arquitetura, arquivos, comandos e auditoria.
+
+## Fase 6: consolidação final
+
+O comando `finalize` reúne os resultados das três estratégias sem carregar LLMs,
+separa aceitos e rejeitados e gera métricas em JSON/CSV e relatório Markdown. A
+execução é CPU-only, idempotente e preserva todos os artefatos anteriores. Consulte
+`docs/FASE6.md` ou execute `notebooks/fase6_analysis.ipynb` no Colab.
