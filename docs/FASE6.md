@@ -37,7 +37,9 @@ python -m cot_enem.cli finalize \
 ```
 
 O notebook `notebooks/fase6_analysis.ipynb` executa o mesmo procedimento e mostra
-as métricas sem carregar modelos.
+as métricas sem carregar modelos. Em uma sessão nova, ele clona automaticamente a
+branch `master` em `/content/cot-enem`; em uma sessão existente, executa `git pull`
+antes da instalação. O diretório `/content` não persiste entre sessões do Colab.
 
 ## Arquivos produzidos
 
